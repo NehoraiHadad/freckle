@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQLite database
+data/freckle.db
+data/freckle.db-wal
+data/freckle.db-shm

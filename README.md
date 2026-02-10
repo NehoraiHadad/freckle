@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Freckle | נמ״ש
 
-## Getting Started
+> **נמ״ש** בעברית. **Freckle** in English.
+> Centralized product management console.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What Is This
+
+A centralized management console that connects to all products via standardized Admin APIs. Each product exposes its own REST endpoints following a shared contract. Freckle consumes them all from one interface.
+
+```
+┌──────────────────────────────────┐
+│        Freckle | נמ״ש            │
+│    One dashboard, all products   │
+└──────┬────────┬────────┬─────────┘
+       │ REST   │ REST   │ REST
+       ▼        ▼        ▼
+  ┌────────┐ ┌────────┐ ┌────────┐
+  │Product │ │Product │ │Product │
+  │Admin   │ │Admin   │ │Admin   │
+  │API     │ │API     │ │API     │
+  └────────┘ └────────┘ └────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+freckle/
+├── README.md              ← You are here
+├── build-freckle-prompt.md ← SEND THIS to build the Freckle console itself
+├── build-prompt.md        ← SEND THIS to build Admin API on a product (team-driven)
+├── prompt.md              ← Detailed task description (single agent, referenced by build-prompt)
+├── docs/
+│   ├── standard.md        ← Freckle Admin API Standard v1.1 (the contract)
+│   ├── checklist.md       ← Compliance checklist
+│   ├── examples/
+│   │   └── curl-examples.sh
+│   └── planning/          ← Full planning documentation (10 files, ~6,700 lines)
+│       ├── vision.md          ← Product vision, scope, success criteria
+│       ├── architecture.md    ← System design + Mermaid diagrams
+│       ├── tech-stack.md      ← Technology decisions with rationale
+│       ├── ui-plan.md         ← Pages, navigation, ASCII wireframes
+│       ├── components.md      ← Core components with TypeScript interfaces
+│       ├── data-model.md      ← SQLite schema, tables, encrypted keys
+│       ├── api-client.md      ← Generic API client + caching + error handling
+│       ├── roadmap.md         ← 5-phase development plan
+│       ├── brainstorm.md      ← Ideas, integrations, challenges
+│       └── implementation-guide.md  ← Copy-paste starter code (Next.js, Express, FastAPI, Flask)
+└── src/                   ← Future: the Freckle console application
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How to Use
 
-## Learn More
+### Adding Admin API to a Product (Team Build)
 
-To learn more about Next.js, take a look at the following resources:
+1. Open a new Claude Code session at the product's root directory
+2. Replace `{{PRODUCT_NAME}}` in `build-prompt.md` with the product name
+3. Send the contents of `build-prompt.md` as the task
+4. Claude will create a team of agents, read the standard, and build everything
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Adding Admin API to a Product (Solo Agent)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Open the product's codebase with a coding agent
+2. Send the contents of `prompt.md` as the task
+3. Append the contents of `docs/standard.md` below the `---STANDARD---` marker
+4. The agent will analyze the codebase, design endpoints, and implement
 
-## Deploy on Vercel
+### Verifying Compliance
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Use `docs/checklist.md` to verify a product's Admin API follows the standard.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Testing Endpoints
+
+See `docs/examples/curl-examples.sh` for example requests and expected responses.
+
+## Products
+
+| Product | Status | Admin API | Stack |
+|---------|--------|-----------|-------|
+| story-creator | Active | Partial (existing `/api/v1/admin/*`) | Next.js + Firebase |
+| podcasto | Planned | - | - |
+| CoverBuddy | Planned | - | - |
+| ai-graphic-designer | Planned | - | - |
+| telegraph | Planned | - | - |
+| auto-video-generator | Planned | - | - |
+
+## Versioning
+
+The standard version is tracked in `docs/standard.md`. When updating:
+- Bump the version
+- Document changes in the changelog section
+- Ensure backward compatibility (additive changes only)
