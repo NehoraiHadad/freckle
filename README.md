@@ -7,7 +7,7 @@
 
 ## What Is This
 
-A centralized management console that connects to all products via standardized Admin APIs. Each product exposes its own REST endpoints following a shared contract. Freckle consumes them all from one interface.
+A centralized admin dashboard that connects to multiple products via standardized REST Admin APIs. Products expose an OpenAPI spec, and Freckle auto-discovers all resources, operations, and relationships — no hardcoded UI per product.
 
 ```
 ┌──────────────────────────────────┐
@@ -23,71 +23,136 @@ A centralized management console that connects to all products via standardized 
   └────────┘ └────────┘ └────────┘
 ```
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router, React 19) |
+| Language | TypeScript 5 |
+| Database | SQLite via better-sqlite3 |
+| Auth | JWT (jose) with cookie-based sessions |
+| UI | shadcn/ui, Tailwind CSS 4, Lucide icons |
+| Charts | Recharts |
+| i18n | next-intl (English + Hebrew, RTL support) |
+| Process Manager | PM2 (port 4000) |
+
 ## Project Structure
 
 ```
 freckle/
-├── README.md              ← You are here
-├── build-freckle-prompt.md ← SEND THIS to build the Freckle console itself
-├── build-prompt.md        ← SEND THIS to build Admin API on a product (team-driven)
-├── prompt.md              ← Detailed task description (single agent, referenced by build-prompt)
+├── src/
+│   ├── app/
+│   │   ├── page.tsx                        # Dashboard (stats, trends, activity)
+│   │   ├── login/                          # Auth page
+│   │   ├── products/                       # Product CRUD (list, new, edit)
+│   │   ├── p/[slug]/                       # Product dashboard
+│   │   │   ├── [capability]/               # Resource list (auto-discovered)
+│   │   │   │   └── [id]/                   # Resource detail + sub-resource tabs
+│   │   ├── settings/                       # App preferences
+│   │   ├── audit-log/                      # Action audit trail
+│   │   └── api/
+│   │       ├── proxy/[product]/[...path]/  # Server-side API proxy (keys never reach client)
+│   │       └── health-check/               # Background health monitoring
+│   ├── components/
+│   │   ├── freckle/                        # App-specific components
+│   │   │   ├── data-table.tsx              # Generic sortable data table
+│   │   │   ├── entity-detail.tsx           # Resource detail view
+│   │   │   ├── operation-panel.tsx         # Execute API operations (method+path from spec)
+│   │   │   ├── schema-form.tsx             # Auto-generated forms from JSON Schema
+│   │   │   ├── sub-resource-tab.tsx        # Lazy-loading child resources
+│   │   │   ├── stats-grid.tsx              # Dashboard stats cards
+│   │   │   ├── trends-chart.tsx            # Recharts time-series
+│   │   │   ├── activity-feed.tsx           # Recent events feed
+│   │   │   └── ...                         # search, pagination, health, empty states
+│   │   └── ui/                             # shadcn/ui primitives
+│   ├── lib/
+│   │   ├── api-client/                     # Generic Admin API client
+│   │   ├── auth/                           # JWT session management
+│   │   ├── crypto.ts                       # AES-256-GCM key encryption
+│   │   ├── db/                             # SQLite models + migrations
+│   │   ├── openapi/                        # OpenAPI spec parser + schema resolver
+│   │   └── format.ts, utils.ts             # Shared utilities
+│   ├── messages/
+│   │   ├── en.json                         # English translations
+│   │   └── he.json                         # Hebrew translations
+│   └── types/                              # TypeScript type definitions
 ├── docs/
-│   ├── standard.md        ← Freckle Admin API Standard v1.1 (the contract)
-│   ├── checklist.md       ← Compliance checklist
-│   ├── examples/
-│   │   └── curl-examples.sh
-│   └── planning/          ← Full planning documentation (10 files, ~6,700 lines)
-│       ├── vision.md          ← Product vision, scope, success criteria
-│       ├── architecture.md    ← System design + Mermaid diagrams
-│       ├── tech-stack.md      ← Technology decisions with rationale
-│       ├── ui-plan.md         ← Pages, navigation, ASCII wireframes
-│       ├── components.md      ← Core components with TypeScript interfaces
-│       ├── data-model.md      ← SQLite schema, tables, encrypted keys
-│       ├── api-client.md      ← Generic API client + caching + error handling
-│       ├── roadmap.md         ← 5-phase development plan
-│       ├── brainstorm.md      ← Ideas, integrations, challenges
-│       └── implementation-guide.md  ← Copy-paste starter code (Next.js, Express, FastAPI, Flask)
-└── src/                   ← Future: the Freckle console application
+│   ├── standard.md                         # Freckle Admin API Standard v1.1
+│   ├── checklist.md                        # Compliance checklist
+│   ├── examples/                           # curl examples
+│   └── planning/                           # Architecture & design docs (10 files)
+├── build-freckle-prompt.md                 # Prompt to build the console itself
+├── build-prompt.md                         # Prompt to add Admin API to a product
+└── prompt.md                               # Solo-agent build prompt
 ```
 
-## How to Use
+## Key Features
 
-### Adding Admin API to a Product (Team Build)
+- **OpenAPI-driven discovery** — register a product with its API URL, Freckle fetches the OpenAPI spec and auto-generates sidebar, tables, forms, and detail views
+- **Zero hardcoded UI per product** — all resources and operations are derived from the spec at runtime
+- **Server-side API proxy** — API keys are encrypted at rest (AES-256-GCM) and never sent to the browser
+- **Hierarchical resources** — sub-resources with `requiresParentId` render as tabs on parent detail pages
+- **Auto-generated forms** — JSON Schema from the spec drives form inputs (enum → dropdown, string → input, etc.)
+- **i18n + RTL** — full English and Hebrew support with Tailwind logical properties
+- **Audit log** — tracks all admin operations
+- **Health monitoring** — periodic product health checks with status badges
 
-1. Open a new Claude Code session at the product's root directory
-2. Replace `{{PRODUCT_NAME}}` in `build-prompt.md` with the product name
-3. Send the contents of `build-prompt.md` as the task
-4. Claude will create a team of agents, read the standard, and build everything
+## Getting Started
 
-### Adding Admin API to a Product (Solo Agent)
+### Prerequisites
 
-1. Open the product's codebase with a coding agent
-2. Send the contents of `prompt.md` as the task
-3. Append the contents of `docs/standard.md` below the `---STANDARD---` marker
-4. The agent will analyze the codebase, design endpoints, and implement
+- Node.js 20+
+- pnpm
 
-### Verifying Compliance
+### Install & Run
 
-Use `docs/checklist.md` to verify a product's Admin API follows the standard.
+```bash
+pnpm install
+pnpm dev          # starts on http://localhost:3000
+```
 
-### Testing Endpoints
+### Production (PM2)
 
-See `docs/examples/curl-examples.sh` for example requests and expected responses.
+```bash
+pnpm build
+pm2 start ecosystem.config.js --only freckle
+```
+
+The PM2 config runs the app on **port 4000**.
+
+### Environment Variables
+
+Create `.env.local`:
+
+```env
+FRECKLE_ADMIN_PASSWORD=<your-password>
+FRECKLE_JWT_SECRET=<random-secret>
+FRECKLE_ENCRYPTION_KEY=<32-byte-hex-key>
+```
+
+## Adding a Product
+
+1. Log in to Freckle
+2. Go to **Products → Add Product**
+3. Enter the product name, slug, base API URL, and API key
+4. Freckle fetches the OpenAPI spec from the product's well-known paths
+5. All resources and operations appear automatically in the sidebar
+
+### Admin API Standard
+
+Products must implement the [Freckle Admin API Standard](docs/standard.md). Use [the checklist](docs/checklist.md) to verify compliance.
+
+To add Admin API support to an existing product, use the build prompts:
+- **Team build**: `build-prompt.md` (multi-agent)
+- **Solo build**: `prompt.md` (single agent)
 
 ## Products
 
 | Product | Status | Admin API | Stack |
 |---------|--------|-----------|-------|
-| story-creator | Active | Partial (existing `/api/v1/admin/*`) | Next.js + Firebase |
+| story-creator | Active | OpenAPI (46 operations, 31 resources) | Next.js + Firebase |
 | podcasto | Planned | - | - |
 | CoverBuddy | Planned | - | - |
 | ai-graphic-designer | Planned | - | - |
 | telegraph | Planned | - | - |
 | auto-video-generator | Planned | - | - |
-
-## Versioning
-
-The standard version is tracked in `docs/standard.md`. When updating:
-- Bump the version
-- Document changes in the changelog section
-- Ensure backward compatibility (additive changes only)
