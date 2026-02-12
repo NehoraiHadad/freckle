@@ -1,7 +1,11 @@
-# Freckle | נמ״ש
-
-> **נמ״ש** בעברית. **Freckle** in English.
-> Centralized product management console.
+<div align="center">
+  <img src="public/logo.png" alt="Freckle Logo" width="120" />
+  <h1>Freckle | נמ״ש</h1>
+  <p>
+    <strong>נמ״ש</strong> בעברית. <strong>Freckle</strong> in English.<br>
+    Centralized product management console.
+  </p>
+</div>
 
 ---
 
