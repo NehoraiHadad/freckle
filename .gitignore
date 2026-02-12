@@ -41,8 +41,11 @@ yarn-error.log*
 next-env.d.ts
 
 # SQLite database
-data/freckle.db
-data/freckle.db-wal
-data/freckle.db-shm
+*.db
+*.db-wal
+*.db-shm
+data/*.db
+data/*.db-wal
+data/*.db-shm
 
 .playwright-mcp
