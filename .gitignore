@@ -44,3 +44,5 @@ next-env.d.ts
 data/freckle.db
 data/freckle.db-wal
 data/freckle.db-shm
+
+.playwright-mcp

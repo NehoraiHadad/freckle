@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
+import logo from "../../../public/logo.png"
 import { useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import {
@@ -94,8 +96,13 @@ export function AppSidebar({ products, currentProduct, resourceTree }: AppSideba
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <Link href="/" className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
-            F
+          <div className="relative flex size-6 items-center justify-center">
+            <Image
+              src={logo}
+              alt="Freckle Logo"
+              fill
+              className="object-contain"
+            />
           </div>
           <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">
             Freckle
