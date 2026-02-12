@@ -2,6 +2,8 @@
 // Product Registry
 // ============================================
 
+import type { DiscoveryMode } from "./openapi";
+
 export type ProductStatus = "active" | "inactive" | "unreachable";
 export type HealthStatus = "healthy" | "degraded" | "unhealthy" | "unknown";
 
@@ -22,9 +24,13 @@ export interface Product {
   displayOrder: number;
   addedAt: string;
   updatedAt: string;
+  openapiSpec: string | null;
+  openapiUrl: string | null;
+  specFetchedAt: string | null;
+  discoveryMode: DiscoveryMode;
 }
 
-export type ProductForDisplay = Omit<Product, "apiKey">;
+export type ProductForDisplay = Omit<Product, "apiKey" | "openapiSpec">;
 
 export interface ProductInput {
   id: string;

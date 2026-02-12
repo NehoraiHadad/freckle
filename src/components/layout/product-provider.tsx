@@ -14,7 +14,6 @@ export function ProductProvider({ product, children }: ProductProviderProps) {
     product,
     capabilities: product.capabilities,
     supportedActions: product.supportedActions,
-    hasCapability: (cap: string) => product.capabilities.includes(cap),
   }
 
   return (

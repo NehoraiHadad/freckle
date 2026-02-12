@@ -14,6 +14,7 @@ import { getAllProducts, getAllProductsForDisplay } from "@/lib/db/products";
 import { getPreference } from "@/lib/db/preferences";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { CachedAdminApiClient } from "@/lib/api-client/cached-client";
+import { toTitleCase } from "@/lib/format";
 import type { StatsResponse } from "@/types/admin-api";
 import type { Product } from "@/types/product";
 
@@ -21,6 +22,29 @@ interface ProductStats {
   product: Product;
   stats: StatsResponse | null;
   error: string | null;
+}
+
+/** Extract the first few numeric stats from a generic StatsResponse */
+function extractStatSummary(stats: StatsResponse): Array<{ label: string; value: number }> {
+  const result: Array<{ label: string; value: number }> = [];
+  for (const [key, value] of Object.entries(stats)) {
+    if (key === "generatedAt") continue;
+    if (typeof value === "number") {
+      result.push({ label: toTitleCase(key), value });
+      if (result.length >= 3) break;
+      continue;
+    }
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
+        if (typeof subValue === "number") {
+          result.push({ label: `${toTitleCase(key)} ${toTitleCase(subKey)}`, value: subValue });
+          if (result.length >= 3) break;
+        }
+      }
+      if (result.length >= 3) break;
+    }
+  }
+  return result;
 }
 
 async function fetchAllProductStats(products: Product[]): Promise<ProductStats[]> {
@@ -54,14 +78,6 @@ async function ProductStatsGrid({ products, layout }: { products: Product[]; lay
   const tc = await getTranslations("common");
   const tn = await getTranslations("nav");
 
-  // Aggregate stats
-  let totalUsers = 0;
-  let totalContent = 0;
-  for (const ps of productStats) {
-    if (ps.stats?.users) totalUsers += ps.stats.users.total;
-    if (ps.stats?.content) totalContent += ps.stats.content.total;
-  }
-
   return (
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -69,8 +85,6 @@ async function ProductStatsGrid({ products, layout }: { products: Product[]; lay
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("description", { count: products.length })}
-            {totalUsers > 0 && ` | ${t("totalUsers", { count: totalUsers.toLocaleString() })}`}
-            {totalContent > 0 && ` | ${t("totalContent", { count: totalContent.toLocaleString() })}`}
           </p>
         </div>
         <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
@@ -82,44 +96,41 @@ async function ProductStatsGrid({ products, layout }: { products: Product[]; lay
         <ProductListView productStats={productStats} tn={tn} />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {productStats.map(({ product, stats, error }) => (
-            <Link key={product.id} href={`/p/${product.id}`} className="block">
-              <Card className="transition-colors hover:bg-muted/50">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-base font-medium">
-                    {product.name}
-                  </CardTitle>
-                  <HealthBadge status={product.healthStatus} size="sm" />
-                </CardHeader>
-                <CardContent>
-                  {error ? (
-                    <p className="text-sm text-destructive">{error}</p>
-                  ) : stats ? (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      {stats.users && (
-                        <span>{stats.users.total.toLocaleString()} {tn("users").toLowerCase()}</span>
-                      )}
-                      {stats.content && (
-                        <span>{stats.content.total.toLocaleString()} {tn("content").toLowerCase()}</span>
-                      )}
-                      {!stats.users && !stats.content && (
-                        <span>{tc("connected")}</span>
-                      )}
+          {productStats.map(({ product, stats, error }) => {
+            const statSummary = stats ? extractStatSummary(stats) : [];
+            return (
+              <Link key={product.id} href={`/p/${product.id}`} className="block">
+                <Card className="transition-colors hover:bg-muted/50">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">
+                      {product.name}
+                    </CardTitle>
+                    <HealthBadge status={product.healthStatus} size="sm" />
+                  </CardHeader>
+                  <CardContent>
+                    {error ? (
+                      <p className="text-sm text-destructive">{error}</p>
+                    ) : statSummary.length > 0 ? (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        {statSummary.map((s) => (
+                          <span key={s.label}>{s.value.toLocaleString()} {s.label.toLowerCase()}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{tc("connected")}</p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {product.capabilities.map((cap) => (
+                        <Badge key={cap} variant="secondary" className="text-xs">
+                          {cap}
+                        </Badge>
+                      ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{tc("noData")}</p>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {product.capabilities.map((cap) => (
-                      <Badge key={cap} variant="secondary" className="text-xs">
-                        {cap}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </>
@@ -154,29 +165,28 @@ function ProductListView({ productStats, tn }: {
       <TableHeader>
         <TableRow>
           <TableHead>{tn("products")}</TableHead>
-          <TableHead>{tn("users")}</TableHead>
-          <TableHead className="text-right">{tn("content")}</TableHead>
+          <TableHead className="text-right">Stats</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {productStats.map(({ product, stats, error }) => (
-          <TableRow key={product.id}>
-            <TableCell>
-              <Link href={`/p/${product.id}`} className="font-medium hover:underline">
-                <span className="flex items-center gap-2">
-                  {product.name}
-                  <HealthBadge status={product.healthStatus} size="sm" />
-                </span>
-              </Link>
-            </TableCell>
-            <TableCell>
-              {error ? "—" : stats?.users?.total.toLocaleString() ?? "—"}
-            </TableCell>
-            <TableCell className="text-right">
-              {error ? "—" : stats?.content?.total.toLocaleString() ?? "—"}
-            </TableCell>
-          </TableRow>
-        ))}
+        {productStats.map(({ product, stats, error }) => {
+          const firstStat = stats ? extractStatSummary(stats)[0] : null;
+          return (
+            <TableRow key={product.id}>
+              <TableCell>
+                <Link href={`/p/${product.id}`} className="font-medium hover:underline">
+                  <span className="flex items-center gap-2">
+                    {product.name}
+                    <HealthBadge status={product.healthStatus} size="sm" />
+                  </span>
+                </Link>
+              </TableCell>
+              <TableCell className="text-right">
+                {error ? "—" : firstStat ? `${firstStat.value.toLocaleString()} ${firstStat.label.toLowerCase()}` : "—"}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

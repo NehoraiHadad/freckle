@@ -7,7 +7,6 @@ export interface ProductContextValue {
   product: Product
   capabilities: string[]
   supportedActions: Record<string, string[]>
-  hasCapability: (cap: string) => boolean
 }
 
 export const ProductContext = createContext<ProductContextValue | null>(null)

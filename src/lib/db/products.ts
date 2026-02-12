@@ -1,6 +1,7 @@
 import { getDb } from "./index";
 import { encrypt, decrypt } from "../crypto";
 import type { Product, ProductInput, ProductForDisplay } from "@/types/product";
+import type { DiscoveryMode } from "@/types/openapi";
 
 function safeJsonParse<T>(value: unknown, fallback: T): T {
   if (typeof value !== "string") return fallback;
@@ -61,6 +62,10 @@ const UPDATE_FIELD_MAP: Record<string, { column: string; transform?: (v: unknown
   apiStandardVersion: { column: "api_standard_version" },
   productVersion: { column: "product_version" },
   status: { column: "status" },
+  openapiSpec: { column: "openapi_spec" },
+  openapiUrl: { column: "openapi_url" },
+  specFetchedAt: { column: "spec_fetched_at" },
+  discoveryMode: { column: "discovery_mode" },
 };
 
 export function updateProduct(
@@ -71,6 +76,10 @@ export function updateProduct(
     apiStandardVersion?: string;
     productVersion?: string;
     status?: string;
+    openapiSpec?: string | null;
+    openapiUrl?: string | null;
+    specFetchedAt?: string | null;
+    discoveryMode?: DiscoveryMode;
   },
 ): Product | null {
   const db = getDb();
@@ -131,6 +140,10 @@ function deserializeProduct(row: unknown): Product {
     displayOrder: r.display_order as number,
     addedAt: r.added_at as string,
     updatedAt: r.updated_at as string,
+    openapiSpec: r.openapi_spec as string | null,
+    openapiUrl: r.openapi_url as string | null,
+    specFetchedAt: r.spec_fetched_at as string | null,
+    discoveryMode: (r.discovery_mode as DiscoveryMode) || "openapi",
   };
 }
 
@@ -152,5 +165,8 @@ function deserializeProductForDisplay(row: unknown): ProductForDisplay {
     displayOrder: r.display_order as number,
     addedAt: r.added_at as string,
     updatedAt: r.updated_at as string,
+    openapiUrl: r.openapi_url as string | null,
+    specFetchedAt: r.spec_fetched_at as string | null,
+    discoveryMode: (r.discovery_mode as DiscoveryMode) || "openapi",
   };
 }

@@ -11,6 +11,8 @@ import {
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { appendLog } from "@/lib/db/audit-log";
 import { revalidatePath } from "next/cache";
+import { parseOpenApiSpec } from "@/lib/openapi/spec-parser";
+import { storeResources } from "@/lib/db/api-resources";
 
 const PRODUCT_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -94,6 +96,30 @@ export async function addProductAction(
       apiStandardVersion: meta.apiStandardVersion,
       productVersion: meta.version,
     });
+
+    // Attempt OpenAPI spec discovery
+    try {
+      const rawSpec = await tempClient.fetchOpenApiSpec();
+      if (rawSpec) {
+        const parsed = parseOpenApiSpec(
+          rawSpec as Parameters<typeof parseOpenApiSpec>[0],
+          baseUrl,
+          meta.product,
+        );
+
+        // Store spec and parsed data
+        updateProduct(meta.product, {
+          openapiSpec: JSON.stringify(rawSpec),
+          specFetchedAt: new Date().toISOString(),
+          discoveryMode: "openapi",
+        });
+
+        storeResources(meta.product, parsed.resources, parsed.allOperations);
+      }
+    } catch (error) {
+      // OpenAPI is optional — log but don't fail registration
+      console.warn("[addProduct] OpenAPI spec discovery failed:", error instanceof Error ? error.message : error);
+    }
 
     getClientManager().invalidateAll();
 
@@ -259,3 +285,55 @@ export async function refreshProductMeta(id: string): Promise<{ error?: string; 
     return { error: "Failed to fetch product metadata." };
   }
 }
+
+export async function refreshOpenApiSpec(
+  productId: string,
+  customUrl?: string,
+): Promise<{ error?: string; success?: boolean; operationCount?: number }> {
+  const idError = validateProductId(productId);
+  if (idError) return idError;
+
+  const product = getProduct(productId);
+  if (!product) {
+    return { error: "Product not found" };
+  }
+
+  const client = getClientManager().getClient(productId);
+
+  try {
+    const rawSpec = await client.fetchOpenApiSpec(customUrl);
+    if (!rawSpec) {
+      return { error: "Could not find an OpenAPI spec. Try providing a URL manually." };
+    }
+
+    const parsed = parseOpenApiSpec(
+      rawSpec as Parameters<typeof parseOpenApiSpec>[0],
+      product.baseUrl,
+      productId,
+    );
+
+    // Store spec and parsed data
+    updateProduct(productId, {
+      openapiSpec: JSON.stringify(rawSpec),
+      openapiUrl: customUrl || null,
+      specFetchedAt: new Date().toISOString(),
+      discoveryMode: "openapi",
+    });
+
+    storeResources(productId, parsed.resources, parsed.allOperations);
+
+    appendLog({
+      productId,
+      action: "openapi.refresh",
+      entityType: "product",
+      entityId: productId,
+      details: { operationCount: parsed.allOperations.length, resourceCount: parsed.resources.length },
+    });
+
+    revalidatePath("/");
+    return { success: true, operationCount: parsed.allOperations.length };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to fetch/parse OpenAPI spec" };
+  }
+}
+

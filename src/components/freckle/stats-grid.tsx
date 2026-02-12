@@ -1,11 +1,4 @@
 import {
-  Users,
-  UserCheck,
-  UserPlus,
-  FileText,
-  FileCheck,
-  FilePlus,
-  Blocks,
   type LucideIcon,
   TrendingUp,
   TrendingDown,
@@ -19,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { StatsResponse } from "@/types/admin-api";
+import { toTitleCase } from "@/lib/format";
+import { getResourceIcon } from "@/lib/resource-icons";
 
 interface StatCardData {
   id: string;
@@ -33,86 +28,51 @@ interface StatCardData {
   };
 }
 
-interface StatsLabels {
-  totalUsers: string;
-  activeUsers: string;
-  newUsers30d: string;
-  totalContent: string;
-  published: string;
-  created30d: string;
-}
-
 interface StatsGridProps {
   stats: StatsResponse;
-  productCapabilities: string[];
-  labels: StatsLabels;
 }
 
-function buildStatCards(
-  stats: StatsResponse,
-  capabilities: string[],
-  labels: StatsLabels
-): StatCardData[] {
+function buildStatCards(stats: StatsResponse): StatCardData[] {
   const cards: StatCardData[] = [];
 
-  if (capabilities.includes("users") && stats.users) {
-    cards.push(
-      {
-        id: "users-total",
-        label: labels.totalUsers,
-        value: stats.users.total,
-        icon: Users,
-      },
-      {
-        id: "users-active",
-        label: labels.activeUsers,
-        value: stats.users.active,
-        icon: UserCheck,
-      },
-      {
-        id: "users-new",
-        label: labels.newUsers30d,
-        value: stats.users.newLast30d,
-        icon: UserPlus,
-      }
-    );
-  }
+  for (const [key, value] of Object.entries(stats)) {
+    // Skip metadata fields
+    if (key === "generatedAt") continue;
 
-  if (capabilities.includes("content") && stats.content) {
-    cards.push(
-      {
-        id: "content-total",
-        label: labels.totalContent,
-        value: stats.content.total,
-        icon: FileText,
-      },
-      {
-        id: "content-published",
-        label: labels.published,
-        value: stats.content.publishedTotal,
-        icon: FileCheck,
-      },
-      {
-        id: "content-new",
-        label: labels.created30d,
-        value: stats.content.createdLast30d,
-        icon: FilePlus,
-      }
-    );
-  }
+    // Top-level number → card directly
+    if (typeof value === "number") {
+      cards.push({
+        id: key,
+        label: toTitleCase(key),
+        value,
+        icon: getResourceIcon(key),
+      });
+      continue;
+    }
 
-  if (stats.custom) {
-    for (const [key, value] of Object.entries(stats.custom)) {
-      if (typeof value === "number" || typeof value === "string") {
-        cards.push({
-          id: `custom-${key}`,
-          label: key
-            .replace(/([A-Z])/g, " $1")
-            .replace(/^./, (s) => s.toUpperCase())
-            .trim(),
-          value,
-          icon: Blocks,
-        });
+    // Top-level string → card directly
+    if (typeof value === "string") {
+      cards.push({
+        id: key,
+        label: toTitleCase(key),
+        value,
+        icon: getResourceIcon(key),
+      });
+      continue;
+    }
+
+    // Nested object → card per numeric sub-field
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const sectionIcon = getResourceIcon(key);
+      for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
+        if (typeof subValue === "number" || typeof subValue === "string") {
+          cards.push({
+            id: `${key}-${subKey}`,
+            label: `${toTitleCase(key)} ${toTitleCase(subKey)}`,
+            value: subValue,
+            icon: sectionIcon,
+          });
+        }
       }
     }
   }
@@ -170,8 +130,8 @@ function StatCard({ card }: { card: StatCardData }) {
   );
 }
 
-export function StatsGrid({ stats, productCapabilities, labels }: StatsGridProps) {
-  const cards = buildStatCards(stats, productCapabilities, labels);
+export function StatsGrid({ stats }: StatsGridProps) {
+  const cards = buildStatCards(stats);
 
   if (cards.length === 0) {
     return null;

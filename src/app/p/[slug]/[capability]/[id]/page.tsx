@@ -4,10 +4,16 @@ import { getProduct } from "@/lib/db/products"
 import { classifyError } from "@/lib/api-client/errors"
 import { notFound } from "next/navigation"
 import { EntityDetail } from "@/components/freckle/entity-detail"
-import { ActionPanel } from "@/components/freckle/action-panel"
+import { OperationPanel } from "@/components/freckle/operation-panel"
 import { ErrorBanner } from "@/components/freckle/error-banner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { getResourceOperations, getProductResources } from "@/lib/db/api-resources"
+import type { ApiResource } from "@/types/openapi"
+import { SubResourceTab } from "@/components/freckle/sub-resource-tab"
+import { toTitleCase, formatDate } from "@/lib/format"
+import { HIDDEN_FIELDS, BADGE_FIELDS, isDateField } from "@/lib/entity-fields"
+import { findResource } from "@/lib/openapi/find-resource"
 
 interface EntityDetailPageProps {
   params: Promise<{ slug: string; capability: string; id: string }>
@@ -19,29 +25,6 @@ interface TabDef {
   content: ReactNode
   badge?: string | number
 }
-
-/** Convert camelCase/slug to Title Case */
-function toTitleCase(s: string): string {
-  return s
-    .replace(/[-_]/g, " ")
-    .replace(/([A-Z])/g, " $1")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim()
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-const HIDDEN_FIELDS = new Set(["id", "metadata", "stats", "replies", "pages", "characterTemplates", "adHocCharacters", "characterIds"])
-const BADGE_FIELDS = new Set(["status", "type", "role", "tier"])
-const DATE_FIELDS = new Set(["createdAt", "updatedAt", "resolvedAt", "lastActiveAt", "expiresAt"])
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -61,15 +44,33 @@ function renderValue(key: string, value: unknown): React.ReactNode {
     return <Badge variant="outline">{String(value)}</Badge>
   }
 
-  if (DATE_FIELDS.has(key) && typeof value === "string") {
+  if (isDateField(key, value) && typeof value === "string") {
     return formatDate(value)
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground">—</span>
+    if (value.every(v => typeof v === "string" || typeof v === "number")) {
+      const shown = value.slice(0, 5)
+      return (
+        <div className="flex flex-wrap gap-1">
+          {shown.map((v, i) => <Badge key={i} variant="secondary" className="text-xs font-normal">{String(v)}</Badge>)}
+          {value.length > 5 && <span className="text-xs text-muted-foreground">+{value.length - 5}</span>}
+        </div>
+      )
+    }
+    return <span className="text-xs text-muted-foreground">{value.length} items</span>
   }
 
   if (typeof value === "object" && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>
     if ("name" in obj && obj.name) return String(obj.name)
     if ("email" in obj && obj.email) return String(obj.email)
-    return <code className="text-xs">{JSON.stringify(value)}</code>
+    const entries = Object.entries(obj).slice(0, 3)
+    if (entries.length > 0 && entries.every(([, v]) => typeof v !== "object")) {
+      return <span className="text-xs text-muted-foreground">{entries.map(([k, v]) => `${toTitleCase(k)}: ${v}`).join(", ")}</span>
+    }
+    return <span className="text-xs text-muted-foreground">{Object.keys(obj).length} fields</span>
   }
 
   if (typeof value === "boolean") {
@@ -115,9 +116,11 @@ function MetadataTab({ data }: { data: Record<string, unknown> }) {
   return (
     <Card>
       <CardContent className="pt-6">
-        <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs">
-          {JSON.stringify(data, null, 2)}
-        </pre>
+        {entries.map(([key, value]) => (
+          <InfoRow key={key} label={toTitleCase(key)}>
+            {renderValue(key, value)}
+          </InfoRow>
+        ))}
       </CardContent>
     </Card>
   )
@@ -140,7 +143,13 @@ function StatsTab({ stats }: { stats: Record<string, unknown> }) {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{toTitleCase(key)}</p>
             <p className="mt-1 text-2xl font-bold">
-              {typeof value === "number" ? value.toLocaleString() : String(value ?? "—")}
+              {typeof value === "number"
+                ? value.toLocaleString()
+                : typeof value === "string" && /^\d+(\.\d+)?$/.test(value)
+                  ? Number(value).toLocaleString()
+                  : typeof value === "boolean"
+                    ? (value ? "Yes" : "No")
+                    : String(value ?? "—")}
             </p>
           </CardContent>
         </Card>
@@ -154,15 +163,23 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
   const product = getProduct(slug)
   if (!product) notFound()
 
-  if (!product.capabilities.includes(capability)) {
+  // Verify this capability/resource exists in the OpenAPI resource tree
+  const allResources = getProductResources(slug)
+  const allKeys = new Set<string>()
+  function collectKeys(rs: ApiResource[]) {
+    for (const r of rs) {
+      allKeys.add(r.key)
+      collectKeys(r.children)
+    }
+  }
+  collectKeys(allResources)
+  if (!allKeys.has(capability)) {
     notFound()
   }
 
   try {
     const client = getClientManager().getClient(slug)
     const entity = await client.entity(capability).get(id)
-
-    const entityActions = product.supportedActions?.[capability] ?? []
 
     // Determine title from entity data
     const title = String(
@@ -216,6 +233,64 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
       })
     }
 
+    // Fetch resource tree for tabs and actions
+    const currentResource = findResource(allResources, capability)
+
+    // Add sub-resource tabs from OpenAPI spec
+    if (currentResource) {
+      for (const child of currentResource.children) {
+        // Only add tabs for sub-resources that have GET operations
+        const getOp = child.operations.find(op => op.httpMethod === "GET" && (op.operationType === "sub-list" || op.operationType === "sub-detail"))
+        if (!getOp) continue
+
+        // Resolve path parameters
+        let fetchPath = getOp.pathTemplate
+        for (const param of getOp.pathParameters) {
+          fetchPath = fetchPath.replace(`{${param}}`, encodeURIComponent(id))
+        }
+
+        tabs.push({
+          id: child.key,
+          label: child.name,
+          content: (
+            <SubResourceTab
+              productSlug={slug}
+              fetchPath={fetchPath}
+            />
+          ),
+        })
+      }
+    }
+
+    // Build actions panel from OpenAPI operations
+    let actionsElement: React.ReactNode = null
+
+    const resourceOps = getResourceOperations(slug, capability)
+    const childOps = currentResource?.children.flatMap(child =>
+      child.operations.filter(op => op.httpMethod !== "GET")
+    ) ?? []
+
+    const allOps = [...resourceOps, ...childOps]
+
+    // Build path params — map all path parameter names to the entity ID
+    const pathParams: Record<string, string> = {}
+    for (const op of allOps) {
+      for (const param of op.pathParameters) {
+        pathParams[param] = id
+      }
+    }
+
+    if (allOps.length > 0) {
+      actionsElement = (
+        <OperationPanel
+          productSlug={slug}
+          operations={allOps}
+          pathParams={pathParams}
+          currentData={entity as Record<string, unknown>}
+        />
+      )
+    }
+
     return (
       <EntityDetail
         title={title}
@@ -225,16 +300,7 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
           label: `Back to ${toTitleCase(capability)}`,
         }}
         tabs={tabs}
-        actions={
-          entityActions.length > 0 ? (
-            <ActionPanel
-              productSlug={slug}
-              entityType={capability as "users" | "content" | "operations"}
-              entityId={id}
-              supportedActions={entityActions}
-            />
-          ) : undefined
-        }
+        actions={actionsElement}
       />
     )
   } catch (error) {

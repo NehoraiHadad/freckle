@@ -35,13 +35,15 @@
     "feedback": "Feedback",
     "drafts": "Drafts",
     "credits": "Credits",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "characters": "Characters",
+    "usage-logs": "Usage Logs",
+    "stats": "Statistics",
+    "history": "History"
   },
   "dashboard": {
     "title": "Dashboard",
     "description": "{count, plural, =1 {1 product} other {# products}} registered",
-    "totalUsers": "{count} total users",
-    "totalContent": "{count} total content",
     "noProducts": "No products registered",
     "noProductsDescription": "Add your first product to start managing it from Freckle.",
     "addProduct": "Add Product",
@@ -89,86 +91,6 @@
     "statusInactive": "Inactive",
     "apiKeyUnchanged": "Leave empty to keep current key"
   },
-  "users": {
-    "title": "Users",
-    "description": "Manage users for {product}",
-    "email": "Email",
-    "name": "Name",
-    "role": "Role",
-    "status": "Status",
-    "lastActive": "Last Active",
-    "searchPlaceholder": "Search users by email or name...",
-    "noUsersFound": "No users found",
-    "noUsersDescription": "Try adjusting your search or filters.",
-    "filterActive": "Active",
-    "filterInactive": "Inactive",
-    "filterSuspended": "Suspended",
-    "never": "Never",
-    "backToUsers": "Back to Users",
-    "info": "Info",
-    "stats": "Stats",
-    "userId": "User ID",
-    "created": "Created",
-    "noStats": "No stats available for this user.",
-    "noRecentActivity": "No recent activity for this user.",
-    "userDetail": "User Detail"
-  },
-  "content": {
-    "title": "Content",
-    "description": "Manage content for {product}",
-    "type": "Type",
-    "author": "Author",
-    "status": "Status",
-    "updatedAt": "Updated",
-    "titleColumn": "Title",
-    "searchPlaceholder": "Search content by title...",
-    "noContentFound": "No content found",
-    "noContentDescription": "Try adjusting your search or filters.",
-    "published": "Published",
-    "draft": "Draft",
-    "archived": "Archived",
-    "unknown": "Unknown",
-    "backToContent": "Back to Content",
-    "info": "Info",
-    "stats": "Stats",
-    "metadata": "Metadata",
-    "contentId": "Content ID",
-    "created": "Created",
-    "updated": "Updated",
-    "noStats": "No stats available for this content.",
-    "noMetadata": "No metadata available for this content.",
-    "contentDetail": "Content Detail",
-    "byAuthor": "{type} by {author}"
-  },
-  "analytics": {
-    "title": "Analytics",
-    "apiCalls": "API Calls",
-    "uniqueUsers": "Unique Users",
-    "topFeature": "Top Feature",
-    "topFeatures": "Top Features",
-    "lastPeriod": "Last {period}"
-  },
-  "operations": {
-    "title": "Operations",
-    "noOperations": "No operations available",
-    "noOperationsDescription": "This product doesn't have any operations configured.",
-    "dryRun": "Dry run (recommended)",
-    "runDryRun": "Run Dry Run",
-    "runForReal": "Run for Real",
-    "runOperation": "Run Operation",
-    "operationCompleted": "Operation completed.",
-    "operationFailed": "Operation failed."
-  },
-  "config": {
-    "title": "Configuration",
-    "productSettings": "Product Settings",
-    "lastUpdated": "Last updated {date}",
-    "lastUpdatedBy": " by {user}",
-    "noSettings": "No configuration settings available.",
-    "saveChanges": "Save Changes",
-    "configSaved": "Configuration saved",
-    "configSaveFailed": "Failed to save configuration"
-  },
   "settings": {
     "title": "Settings",
     "description": "Manage your Freckle console preferences.",
@@ -215,9 +137,9 @@
     "noResultsDescription": "Try adjusting your search or filters.",
     "noTrendData": "No trend data available for this period."
   },
-  "actionPanel": {
-    "confirmTitle": "Confirm Action",
-    "confirmDescription": "Are you sure you want to execute <b>{action}</b>? This action may not be reversible."
+  "operationPanel": {
+    "actions": "Actions",
+    "confirmDescription": "Execute {method} request to {path}. This action may not be reversible."
   },
   "trends": {
     "title": "Trends"
@@ -236,14 +158,6 @@
     "page": "Page {page}",
     "perPage": "{size} per page",
     "pageSize": "Page size"
-  },
-  "stats": {
-    "totalUsers": "Total Users",
-    "activeUsers": "Active Users",
-    "newUsers30d": "New (30d)",
-    "totalContent": "Total Content",
-    "published": "Published",
-    "created30d": "Created (30d)"
   },
   "health": {
     "healthy": "Healthy",

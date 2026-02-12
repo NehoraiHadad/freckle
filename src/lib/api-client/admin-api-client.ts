@@ -6,12 +6,7 @@ import type {
   MetaResponse,
   StatsResponse,
   TrendsResponse,
-  AdminUser,
-  AdminUserDetail,
-  AdminContentItem,
   ActionResponse,
-  DeleteResponse,
-  WebhookRegistration,
 } from "@/types/admin-api";
 import { AdminApiError, AdminApiNetworkError } from "./errors";
 
@@ -60,95 +55,6 @@ export class AdminApiClient {
   }
 
   // ──────────────────────────────────
-  // Users
-  // ──────────────────────────────────
-
-  readonly users = {
-    list: (params?: PaginationParams & { status?: string; role?: string }) =>
-      this.getList<AdminUser>("/users", params ? { ...params } : undefined),
-
-    get: (id: string) =>
-      this.get<AdminUserDetail>(`/users/${encodeURIComponent(id)}`),
-
-    update: (id: string, data: { role?: string; status?: string; name?: string; metadata?: Record<string, unknown> }) =>
-      this.patch<AdminUser>(`/users/${encodeURIComponent(id)}`, data),
-
-    delete: (id: string) =>
-      this.del<DeleteResponse>(`/users/${encodeURIComponent(id)}`),
-
-    action: (id: string, action: string, params?: Record<string, unknown>) =>
-      this.post<ActionResponse>(`/users/${encodeURIComponent(id)}/actions`, { action, params }),
-  };
-
-  // ──────────────────────────────────
-  // Content
-  // ──────────────────────────────────
-
-  readonly content = {
-    list: (params?: PaginationParams & { type?: string; status?: string; authorId?: string }) =>
-      this.getList<AdminContentItem>("/content", params ? { ...params } : undefined),
-
-    get: (id: string) =>
-      this.get<AdminContentItem>(`/content/${encodeURIComponent(id)}`),
-
-    update: (id: string, data: { status?: string; title?: string; metadata?: Record<string, unknown> }) =>
-      this.patch<AdminContentItem>(`/content/${encodeURIComponent(id)}`, data),
-
-    delete: (id: string) =>
-      this.del<DeleteResponse>(`/content/${encodeURIComponent(id)}`),
-
-    action: (id: string, action: string, params?: Record<string, unknown>) =>
-      this.post<ActionResponse>(`/content/${encodeURIComponent(id)}/actions`, { action, params }),
-  };
-
-  // ──────────────────────────────────
-  // Analytics
-  // ──────────────────────────────────
-
-  readonly analytics = {
-    usage: (params?: { period?: string; from?: string; to?: string }) =>
-      this.get<unknown>("/analytics/usage", params),
-
-    activity: (params?: PaginationParams) =>
-      this.getList<unknown>("/analytics/activity", params ? { ...params } : undefined),
-  };
-
-  // ──────────────────────────────────
-  // Config
-  // ──────────────────────────────────
-
-  readonly config = {
-    get: () =>
-      this.get<{ settings: Record<string, unknown>; updatedAt: string; updatedBy: string }>("/config"),
-
-    update: (settings: Record<string, unknown>) =>
-      this.patch<{ settings: Record<string, unknown>; updatedAt: string; updatedBy: string }>("/config", settings),
-  };
-
-  // ──────────────────────────────────
-  // Operations
-  // ──────────────────────────────────
-
-  async runOperation(action: string, params?: Record<string, unknown>): Promise<ActionResponse> {
-    return this.post<ActionResponse>("/operations", { action, params });
-  }
-
-  // ──────────────────────────────────
-  // Webhooks
-  // ──────────────────────────────────
-
-  readonly webhooks = {
-    list: () =>
-      this.get<WebhookRegistration[]>("/webhooks"),
-
-    create: (data: { url: string; events: string[]; secret: string }) =>
-      this.post<WebhookRegistration>("/webhooks", data),
-
-    delete: (id: string) =>
-      this.del<DeleteResponse>(`/webhooks/${encodeURIComponent(id)}`),
-  };
-
-  // ──────────────────────────────────
   // Generic Entity Accessor
   // ──────────────────────────────────
 
@@ -157,24 +63,26 @@ export class AdminApiClient {
    * Use for capabilities without dedicated typed methods.
    */
   entity(capabilityName: string) {
+    // Convert dotted resource keys to slash paths (e.g., "stats.trends" → "stats/trends")
+    const apiPath = capabilityName.replace(/\./g, "/")
     return {
       list: (params?: PaginationParams & Record<string, string | number | boolean | undefined | null>) =>
         this.getList<Record<string, unknown> & { id: string }>(
-          `/${capabilityName}`,
+          `/${apiPath}`,
           params ? { ...params } : undefined,
         ),
       get: (id: string) =>
         this.get<Record<string, unknown> & { id: string }>(
-          `/${capabilityName}/${encodeURIComponent(id)}`,
+          `/${apiPath}/${encodeURIComponent(id)}`,
         ),
       update: (id: string, data: Record<string, unknown>) =>
         this.patch<Record<string, unknown>>(
-          `/${capabilityName}/${encodeURIComponent(id)}`,
+          `/${apiPath}/${encodeURIComponent(id)}`,
           data,
         ),
       action: (id: string, action: string, params?: Record<string, unknown>) =>
         this.post<ActionResponse>(
-          `/${capabilityName}/${encodeURIComponent(id)}/actions`,
+          `/${apiPath}/${encodeURIComponent(id)}/actions`,
           { action, params },
         ),
     };
@@ -191,6 +99,67 @@ export class AdminApiClient {
   ): Promise<Response> {
     const url = this.buildUrl(path);
     return this.rawRequest(method, url, body);
+  }
+
+  /**
+   * Attempt to fetch the OpenAPI spec from the product.
+   * Tries well-known paths in order:
+   * 1. {origin}/api/openapi.json
+   * 2. {baseUrl}/../openapi.json (one level up from admin prefix)
+   * 3. {baseUrl}/openapi.json
+   * Returns the raw spec object or null if not found.
+   */
+  async fetchOpenApiSpec(customUrl?: string): Promise<unknown | null> {
+    const urlsToTry: string[] = [];
+
+    if (customUrl) {
+      urlsToTry.push(customUrl);
+    } else {
+      // Auto-detect: try well-known paths
+      try {
+        const origin = new URL(this.baseUrl).origin;
+        urlsToTry.push(`${origin}/api/openapi.json`);
+      } catch { /* ignore */ }
+
+      // Try one level up from admin prefix
+      const parentUrl = this.baseUrl.replace(/\/[^/]+\/?$/, "");
+      if (parentUrl !== this.baseUrl) {
+        urlsToTry.push(`${parentUrl}/openapi.json`);
+      }
+
+      urlsToTry.push(`${this.baseUrl}/openapi.json`);
+    }
+
+    for (const url of urlsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${this.apiKey}` },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const contentType = response.headers.get("Content-Type") || "";
+          if (contentType.includes("json") || url.endsWith(".json")) {
+            const spec = await response.json();
+            // Basic validation: check it looks like an OpenAPI spec
+            if (spec && typeof spec === "object" && "openapi" in spec && "paths" in spec) {
+              return spec;
+            }
+          }
+        }
+      } catch {
+        // Try next URL
+        continue;
+      }
+    }
+
+    return null;
   }
 
   // ──────────────────────────────────
@@ -220,9 +189,13 @@ export class AdminApiClient {
       );
     }
 
+    // Some endpoints return singleton objects instead of arrays.
+    // Pass through as-is; callers should normalize if needed.
+    const dataLength = Array.isArray(json.data) ? json.data.length : 1;
+    const defaultMeta = { total: dataLength, page: 1, pageSize: dataLength, hasMore: false };
     return {
       data: json.data,
-      meta: json.meta ?? { total: json.data.length, page: 1, pageSize: json.data.length, hasMore: false },
+      meta: json.meta ? { ...defaultMeta, ...json.meta } : defaultMeta,
     };
   }
 

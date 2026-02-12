@@ -25,38 +25,6 @@ export interface AdminApiError {
 
 export type AdminApiResponse<T> = AdminApiSuccess<T> | AdminApiError;
 
-export interface AdminUser {
-  id: string;
-  email: string;
-  name: string | null;
-  image: string | null;
-  role: string;
-  status: "active" | "inactive" | "suspended";
-  createdAt: string;
-  lastActiveAt: string | null;
-  stats: Record<string, unknown>;
-  metadata: Record<string, unknown>;
-}
-
-export interface AdminUserDetail extends AdminUser {
-  recentActivity: ActivityEvent[];
-}
-
-export interface AdminContentItem {
-  id: string;
-  title: string;
-  type: string;
-  status: string;
-  author: {
-    id: string;
-    name: string | null;
-  };
-  createdAt: string;
-  updatedAt: string;
-  stats: Record<string, unknown>;
-  metadata: Record<string, unknown>;
-}
-
 export interface ActivityEvent {
   id: string;
   type: string;
@@ -85,31 +53,11 @@ export interface MetaResponse {
   supportedActions: Record<string, string[]>;
 }
 
-export type Capability =
-  | "users"
-  | "content"
-  | "analytics"
-  | "config"
-  | "credits"
-  | "operations"
-  | "webhooks"
-  | "feedback"
-  | "drafts"
-  | (string & {});  // Allow any string while keeping autocomplete
+export type Capability = string;
 
 export interface StatsResponse {
-  users?: {
-    total: number;
-    active: number;
-    newLast30d: number;
-  };
-  content?: {
-    total: number;
-    publishedTotal: number;
-    createdLast30d: number;
-  };
-  custom: Record<string, unknown>;
-  generatedAt: string;
+  generatedAt?: string;
+  [section: string]: unknown;
 }
 
 export interface TrendsResponse {
@@ -152,23 +100,6 @@ export interface ActionRequest {
 export interface ActionResponse {
   action: string;
   result: unknown;
-}
-
-export interface DeleteResponse {
-  deleted: true;
-  id: string;
-}
-
-// ============================================
-// Webhooks
-// ============================================
-
-export interface WebhookRegistration {
-  id: string;
-  url: string;
-  events: string[];
-  createdAt: string;
-  active: boolean;
 }
 
 // ============================================

@@ -37,32 +37,12 @@ export class CachedAdminApiClient {
   // Pass-through (always fresh)
   // ──────────────────────────────────
 
-  get users() {
-    return this.client.users;
-  }
-
-  get content() {
-    return this.client.content;
-  }
-
   health() {
     return this.client.health();
   }
 
-  get analytics() {
-    return this.client.analytics;
-  }
-
-  get config() {
-    return this.client.config;
-  }
-
-  runOperation(action: string, params?: Record<string, unknown>) {
-    return this.client.runOperation(action, params);
-  }
-
-  get webhooks() {
-    return this.client.webhooks;
+  entity(capabilityName: string) {
+    return this.client.entity(capabilityName);
   }
 
   // ──────────────────────────────────

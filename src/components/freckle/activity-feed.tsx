@@ -8,6 +8,11 @@ import {
   Shield,
   Server,
   Activity,
+  PlusCircle,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -32,17 +37,23 @@ interface EventIconConfig {
   color: string;
 }
 
+const EVENT_ICON_PATTERNS: Array<[RegExp, EventIconConfig]> = [
+  [/create|add|new/i, { icon: PlusCircle, color: "text-green-500" }],
+  [/update|edit|modify|change/i, { icon: Pencil, color: "text-blue-500" }],
+  [/delete|remove|destroy/i, { icon: Trash2, color: "text-red-500" }],
+  [/error|fail/i, { icon: AlertTriangle, color: "text-red-500" }],
+  [/notification|alert/i, { icon: Bell, color: "text-yellow-500" }],
+  [/user|account|member|profile/i, { icon: User, color: "text-blue-500" }],
+  [/content|post|article|story|page|document/i, { icon: FileText, color: "text-purple-500" }],
+  [/credit|payment|billing/i, { icon: CreditCard, color: "text-green-500" }],
+  [/admin|auth|permission/i, { icon: Shield, color: "text-orange-500" }],
+  [/system|server|deploy/i, { icon: Server, color: "text-gray-500" }],
+];
+
 function getEventIcon(type: string): EventIconConfig {
-  if (type.startsWith("user"))
-    return { icon: User, color: "text-blue-500" };
-  if (type.startsWith("content"))
-    return { icon: FileText, color: "text-purple-500" };
-  if (type.startsWith("credits") || type.startsWith("credit"))
-    return { icon: CreditCard, color: "text-green-500" };
-  if (type.startsWith("admin"))
-    return { icon: Shield, color: "text-orange-500" };
-  if (type.startsWith("system"))
-    return { icon: Server, color: "text-gray-500" };
+  for (const [pattern, config] of EVENT_ICON_PATTERNS) {
+    if (pattern.test(type)) return config;
+  }
   return { icon: Activity, color: "text-gray-500" };
 }
 

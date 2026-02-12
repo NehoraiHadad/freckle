@@ -31,13 +31,19 @@
     "config": "הגדרות מערכת",
     "settings": "העדפות",
     "global": "כללי",
-    "auditLog": "יומן פעילות"
+    "auditLog": "יומן פעילות",
+    "feedback": "משוב",
+    "drafts": "טיוטות",
+    "credits": "קרדיטים",
+    "webhooks": "ווב-הוקים",
+    "characters": "דמויות",
+    "usage-logs": "יומני שימוש",
+    "stats": "סטטיסטיקה",
+    "history": "היסטוריה"
   },
   "dashboard": {
     "title": "לוח בקרה",
     "description": "{count, plural, =1 {מוצר אחד רשום} other {# מוצרים רשומים}}",
-    "totalUsers": "{count} משתמשים בסה\"כ",
-    "totalContent": "{count} תכנים בסה\"כ",
     "noProducts": "אין מוצרים רשומים",
     "noProductsDescription": "הוסף את המוצר הראשון שלך כדי להתחיל לנהל אותו מ-Freckle.",
     "addProduct": "הוסף מוצר",
@@ -85,86 +91,6 @@
     "statusInactive": "לא פעיל",
     "apiKeyUnchanged": "השאר ריק לשמירת המפתח הנוכחי"
   },
-  "users": {
-    "title": "משתמשים",
-    "description": "ניהול משתמשים עבור {product}",
-    "email": "דוא\"ל",
-    "name": "שם",
-    "role": "תפקיד",
-    "status": "סטטוס",
-    "lastActive": "פעילות אחרונה",
-    "searchPlaceholder": "חפש משתמשים לפי דוא\"ל או שם...",
-    "noUsersFound": "לא נמצאו משתמשים",
-    "noUsersDescription": "נסה לשנות את החיפוש או הסינון.",
-    "filterActive": "פעיל",
-    "filterInactive": "לא פעיל",
-    "filterSuspended": "מושעה",
-    "never": "אף פעם",
-    "backToUsers": "חזרה למשתמשים",
-    "info": "מידע",
-    "stats": "סטטיסטיקות",
-    "userId": "מזהה משתמש",
-    "created": "נוצר",
-    "noStats": "אין סטטיסטיקות זמינות למשתמש זה.",
-    "noRecentActivity": "אין פעילות אחרונה למשתמש זה.",
-    "userDetail": "פרטי משתמש"
-  },
-  "content": {
-    "title": "תוכן",
-    "description": "ניהול תוכן עבור {product}",
-    "type": "סוג",
-    "author": "מחבר",
-    "status": "סטטוס",
-    "updatedAt": "עודכן",
-    "titleColumn": "כותרת",
-    "searchPlaceholder": "חפש תוכן לפי כותרת...",
-    "noContentFound": "לא נמצא תוכן",
-    "noContentDescription": "נסה לשנות את החיפוש או הסינון.",
-    "published": "פורסם",
-    "draft": "טיוטה",
-    "archived": "בארכיון",
-    "unknown": "לא ידוע",
-    "backToContent": "חזרה לתוכן",
-    "info": "מידע",
-    "stats": "סטטיסטיקות",
-    "metadata": "מטא-נתונים",
-    "contentId": "מזהה תוכן",
-    "created": "נוצר",
-    "updated": "עודכן",
-    "noStats": "אין סטטיסטיקות זמינות לתוכן זה.",
-    "noMetadata": "אין מטא-נתונים זמינים לתוכן זה.",
-    "contentDetail": "פרטי תוכן",
-    "byAuthor": "{type} מאת {author}"
-  },
-  "analytics": {
-    "title": "ניתוח נתונים",
-    "apiCalls": "קריאות API",
-    "uniqueUsers": "משתמשים ייחודיים",
-    "topFeature": "תכונה מובילה",
-    "topFeatures": "תכונות מובילות",
-    "lastPeriod": "{period} אחרונים"
-  },
-  "operations": {
-    "title": "פעולות",
-    "noOperations": "אין פעולות זמינות",
-    "noOperationsDescription": "למוצר זה אין פעולות מוגדרות.",
-    "dryRun": "הרצה יבשה (מומלץ)",
-    "runDryRun": "הרצה יבשה",
-    "runForReal": "הרצה אמיתית",
-    "runOperation": "הפעל פעולה",
-    "operationCompleted": "הפעולה הושלמה.",
-    "operationFailed": "הפעולה נכשלה."
-  },
-  "config": {
-    "title": "הגדרות מערכת",
-    "productSettings": "הגדרות מוצר",
-    "lastUpdated": "עודכן לאחרונה {date}",
-    "lastUpdatedBy": " על ידי {user}",
-    "noSettings": "אין הגדרות תצורה זמינות.",
-    "saveChanges": "שמור שינויים",
-    "configSaved": "ההגדרות נשמרו",
-    "configSaveFailed": "שמירת ההגדרות נכשלה"
-  },
   "settings": {
     "title": "העדפות",
     "description": "ניהול העדפות מסוף Freckle.",
@@ -211,9 +137,9 @@
     "noResultsDescription": "נסה לשנות את החיפוש או הסינון.",
     "noTrendData": "אין נתוני מגמות לתקופה זו."
   },
-  "actionPanel": {
-    "confirmTitle": "אישור פעולה",
-    "confirmDescription": "האם אתה בטוח שברצונך לבצע <b>{action}</b>? ייתכן שפעולה זו אינה הפיכה."
+  "operationPanel": {
+    "actions": "פעולות",
+    "confirmDescription": "ביצוע בקשת {method} ל-{path}. ייתכן שפעולה זו אינה הפיכה."
   },
   "trends": {
     "title": "מגמות"
@@ -232,14 +158,6 @@
     "page": "עמוד {page}",
     "perPage": "{size} לעמוד",
     "pageSize": "גודל עמוד"
-  },
-  "stats": {
-    "totalUsers": "סה\"כ משתמשים",
-    "activeUsers": "משתמשים פעילים",
-    "newUsers30d": "חדשים (30 יום)",
-    "totalContent": "סה\"כ תוכן",
-    "published": "פורסם",
-    "created30d": "נוצר (30 יום)"
   },
   "health": {
     "healthy": "תקין",
