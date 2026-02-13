@@ -149,14 +149,3 @@ Products must implement the [Freckle Admin API Standard](docs/standard.md). Use 
 To add Admin API support to an existing product, use the build prompts:
 - **Team build**: `build-prompt.md` (multi-agent)
 - **Solo build**: `prompt.md` (single agent)
-
-## Products
-
-| Product | Status | Admin API | Stack |
-|---------|--------|-----------|-------|
-| story-creator | Active | OpenAPI (46 operations, 31 resources) | Next.js + Firebase |
-| podcasto | Planned | - | - |
-| CoverBuddy | Planned | - | - |
-| ai-graphic-designer | Planned | - | - |
-| telegraph | Planned | - | - |
-| auto-video-generator | Planned | - | - |
