@@ -1,8 +1,8 @@
 <div align="center">
   <img src="public/logo.png" alt="Freckle Logo" width="120" />
-  <h1>Freckle | נמ״ש</h1>
+  <h1>Freckle</h1>
   <p>
-    <strong>נמ״ש</strong> בעברית. <strong>Freckle</strong> in English.<br>
+    <strong>Freckle</strong> <\br>
     Centralized product management console.
   </p>
 </div>
@@ -15,7 +15,7 @@ A centralized admin dashboard that connects to multiple products via standardize
 
 ```
 ┌──────────────────────────────────┐
-│        Freckle | נמ״ש            │
+│              Freckle             │
 │    One dashboard, all products   │
 └──────┬────────┬────────┬─────────┘
        │ REST   │ REST   │ REST
