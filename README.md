@@ -2,7 +2,7 @@
   <img src="public/logo.png" alt="Freckle Logo" width="120" />
   <h1>Freckle</h1>
   <p>
-    <strong>Freckle</strong> <\br>
+    <strong>Freckle</strong> 
     Centralized product management console.
   </p>
 </div>
