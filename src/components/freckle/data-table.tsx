@@ -1,9 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -105,7 +105,9 @@ export function DataTable<T extends { id: string }>({
   onRetry,
 }: DataTableProps<T>) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const tErrors = useTranslations("errors");
+  const tGeneric = useTranslations("generic");
   const currentSort = searchParams.sort;
   const currentOrder = searchParams.order || "desc";
 
@@ -114,13 +116,15 @@ export function DataTable<T extends { id: string }>({
     if (currentSort === key && currentOrder === "asc") {
       newOrder = "desc";
     }
-    router.push(
-      buildUrl(baseUrl, searchParams, {
-        sort: key,
-        order: newOrder,
-        page: "1",
-      })
-    );
+    startTransition(() => {
+      router.push(
+        buildUrl(baseUrl, searchParams, {
+          sort: key,
+          order: newOrder,
+          page: "1",
+        })
+      );
+    });
   };
 
   const handleFilterChange = (key: string, value: string) => {
@@ -131,11 +135,15 @@ export function DataTable<T extends { id: string }>({
         if (v !== undefined && k !== key) params.set(k, v);
       }
       params.set("page", "1");
-      router.push(`${baseUrl}?${params.toString()}`);
+      startTransition(() => {
+        router.push(`${baseUrl}?${params.toString()}`);
+      });
       return;
     }
     overrides[key] = value;
-    router.push(buildUrl(baseUrl, searchParams, overrides));
+    startTransition(() => {
+      router.push(buildUrl(baseUrl, searchParams, overrides));
+    });
   };
 
   if (error) {
@@ -191,7 +199,7 @@ export function DataTable<T extends { id: string }>({
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
-      ) : data.length === 0 ? (
+      ) : data.length === 0 && !isPending ? (
         emptyState ? (
           <EmptyState
             icon={emptyState.icon}
@@ -200,13 +208,13 @@ export function DataTable<T extends { id: string }>({
           />
         ) : (
           <EmptyState
-            icon={<Loader2 className="size-12" />}
+            icon={<Inbox className="size-12" />}
             title={tErrors("noResults")}
             description={tErrors("noResultsDescription")}
           />
         )
       ) : (
-        <>
+        <div className={cn(isPending && "opacity-60 pointer-events-none transition-opacity")}>
           {/* Mobile card layout */}
           <div className="space-y-3 md:hidden">
             {data.map((item) => {
@@ -216,7 +224,7 @@ export function DataTable<T extends { id: string }>({
               return (
                 <Card
                   key={item.id}
-                  className={cn(onRowClick && "cursor-pointer")}
+                  className={cn("hover:bg-muted/50 transition-colors", onRowClick && "cursor-pointer")}
                   onClick={() => onRowClick?.(item)}
                   {...(onRowClick ? {
                     tabIndex: 0,
@@ -260,7 +268,7 @@ export function DataTable<T extends { id: string }>({
                         scope="col"
                         className={cn(
                           col.align === "center" && "text-center",
-                          col.align === "right" && "text-right"
+                          col.align === "right" && "text-end"
                         )}
                         style={col.width ? { width: col.width } : undefined}
                         aria-sort={ariaSortValue}
@@ -271,7 +279,7 @@ export function DataTable<T extends { id: string }>({
                             size="sm"
                             className="-ms-3 h-8"
                             onClick={() => handleSort(col.key)}
-                            aria-label={`Sort by ${col.header}`}
+                            aria-label={tGeneric("sortBy", { column: col.header })}
                           >
                             {col.header}
                             {currentSort === col.key ? (
@@ -314,7 +322,7 @@ export function DataTable<T extends { id: string }>({
                         key={col.key}
                         className={cn(
                           col.align === "center" && "text-center",
-                          col.align === "right" && "text-right"
+                          col.align === "right" && "text-end"
                         )}
                       >
                         {col.render(item)}
@@ -335,7 +343,7 @@ export function DataTable<T extends { id: string }>({
             baseUrl={baseUrl}
             searchParams={getCleanParams(searchParams)}
           />
-        </>
+        </div>
       )}
     </div>
   );

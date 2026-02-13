@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Package } from "lucide-react";
@@ -191,6 +192,10 @@ function ProductListView({ productStats, tn }: {
     </Table>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default async function DashboardPage() {
   const displayProducts = getAllProductsForDisplay();

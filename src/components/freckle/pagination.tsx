@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -67,6 +68,7 @@ function getPageNumbers(
 
 export function Pagination({ meta, baseUrl, searchParams }: PaginationProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const t = useTranslations("pagination");
   const totalPages = Math.max(1, Math.ceil(meta.total / meta.pageSize));
   const from = meta.total === 0 ? 0 : (meta.page - 1) * meta.pageSize + 1;
@@ -74,19 +76,23 @@ export function Pagination({ meta, baseUrl, searchParams }: PaginationProps) {
   const pages = getPageNumbers(meta.page, totalPages);
 
   const goTo = (page: number) => {
-    router.push(
-      buildUrl(baseUrl, searchParams, { page: String(page) })
-    );
+    startTransition(() => {
+      router.push(
+        buildUrl(baseUrl, searchParams, { page: String(page) })
+      );
+    });
   };
 
   const changePageSize = (size: string) => {
-    router.push(
-      buildUrl(baseUrl, searchParams, { pageSize: size, page: "1" })
-    );
+    startTransition(() => {
+      router.push(
+        buildUrl(baseUrl, searchParams, { pageSize: size, page: "1" })
+      );
+    });
   };
 
   return (
-    <nav aria-label="Pagination" className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <nav aria-label="Pagination" className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between${isPending ? " opacity-60 pointer-events-none" : ""}`}>
       <p className="text-sm text-muted-foreground">
         {t("showing")}{" "}
         <span className="font-medium text-foreground">

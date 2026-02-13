@@ -16,11 +16,18 @@ export function Shell({ children, breadcrumbs, currentProductId, resourceTree }:
   const products = getAllProductsForDisplay()
   const currentProduct = currentProductId ? getProduct(currentProductId) : null
 
+  const commandProducts = products.map((p) => ({ id: p.id, name: p.name }))
+
   return (
     <SidebarProvider>
       <AppSidebar products={products} currentProduct={currentProduct} resourceTree={resourceTree} />
       <SidebarInset>
-        <AppHeader breadcrumbs={breadcrumbs} />
+        <AppHeader
+          breadcrumbs={breadcrumbs}
+          products={commandProducts}
+          currentProductId={currentProductId}
+          resourceTree={resourceTree}
+        />
         <main id="main-content" className="flex-1 p-3 sm:p-4 md:p-6">
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>

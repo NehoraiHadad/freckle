@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBanner } from "@/components/freckle/error-banner";
 import type { ActivityEvent } from "@/types/admin-api";
 
 interface ActivityFeedProps {
@@ -57,20 +58,20 @@ function getEventIcon(type: string): EventIconConfig {
   return { icon: Activity, color: "text-gray-500" };
 }
 
-function timeAgo(timestamp: string): string {
+function timeAgo(timestamp: string, tTime: (key: string, params?: Record<string, string | number | Date>) => string): string {
   const now = Date.now();
   const then = new Date(timestamp).getTime();
   const diffSeconds = Math.floor((now - then) / 1000);
 
-  if (diffSeconds < 60) return "just now";
+  if (diffSeconds < 60) return tTime("justNow");
   const minutes = Math.floor(diffSeconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return tTime("minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return tTime("hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return tTime("daysAgo", { count: days });
   const months = Math.floor(days / 30);
-  return `${months}mo ago`;
+  return tTime("monthsAgo", { count: months });
 }
 
 export function ActivityFeed({
@@ -83,11 +84,14 @@ export function ActivityFeed({
   className,
 }: ActivityFeedProps) {
   const t = useTranslations("activity");
+  const tTime = useTranslations("time");
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchEvents = useCallback(
@@ -112,9 +116,15 @@ export function ActivityFeed({
             setEvents(newEvents);
           }
           setHasMore(json.meta?.hasMore ?? false);
+          setError(null);
+          hasLoadedOnce.current = true;
+        } else if (!hasLoadedOnce.current) {
+          setError(json.error?.message || "Failed to load activity");
         }
       } catch {
-        // Silently fail on auto-refresh; initial load shows empty
+        if (!hasLoadedOnce.current) {
+          setError("Network error");
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -150,7 +160,7 @@ export function ActivityFeed({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="space-y-3">
+          <div role="status" className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-start gap-3">
                 <Skeleton className="size-6 shrink-0 rounded-full" />
@@ -160,7 +170,13 @@ export function ActivityFeed({
                 </div>
               </div>
             ))}
+            <span className="sr-only">Loading...</span>
           </div>
+        ) : error ? (
+          <ErrorBanner
+            error={{ code: "FETCH_ERROR", message: error }}
+            onRetry={() => fetchEvents(1)}
+          />
         ) : events.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {t("noActivity")}
@@ -209,7 +225,7 @@ export function ActivityFeed({
                       compact ? "text-[10px]" : "text-xs"
                     )}
                   >
-                    <time dateTime={event.timestamp}>{timeAgo(event.timestamp)}</time>
+                    <time dateTime={event.timestamp}>{timeAgo(event.timestamp, tTime)}</time>
                   </span>
                 </article>
               );

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,22 @@ export function EntityDetail({
   actions,
   className,
 }: EntityDetailProps) {
-  const activeTab = defaultTab || (tabs.length > 0 ? tabs[0].id : undefined);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const tabFromUrl = searchParams.get("tab");
+  const validTabIds = new Set(tabs.map((t) => t.id));
+  const activeTab =
+    (tabFromUrl && validTabIds.has(tabFromUrl) ? tabFromUrl : null) ||
+    defaultTab ||
+    (tabs.length > 0 ? tabs[0].id : undefined);
+
+  function handleTabChange(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", value);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -60,7 +76,7 @@ export function EntityDetail({
       </div>
 
       {tabs.length > 0 && (
-        <Tabs defaultValue={activeTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="w-full justify-start overflow-x-auto md:w-auto">
             {tabs.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">

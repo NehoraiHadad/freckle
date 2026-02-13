@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,13 +28,18 @@ export function DeleteProductButton({ productId, productName }: DeleteProductBut
   const t = useTranslations("products");
   const tCommon = useTranslations("common");
 
+  const tToast = useTranslations("toast");
+
   const handleDelete = async () => {
     setDeleting(true);
     const result = await deleteProductAction(productId);
     setDeleting(false);
     if (result.success) {
+      toast.success(tToast("productDeleted"));
       setOpen(false);
       router.refresh();
+    } else if (result.error) {
+      toast.error(result.error);
     }
   };
 

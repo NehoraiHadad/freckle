@@ -4,9 +4,11 @@ import { getProduct } from "@/lib/db/products"
 import { getProductResources, getResourceOperations } from "@/lib/db/api-resources"
 import { classifyError } from "@/lib/api-client/errors"
 import { notFound } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { EntityTable } from "./entity-table"
 import { ErrorBanner } from "@/components/freckle/error-banner"
 import { OperationPanel } from "@/components/freckle/operation-panel"
+import { ProductShell } from "@/components/layout/product-shell"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,13 +16,21 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import type { PaginationMeta } from "@/types/admin-api"
 import type { ApiResource, ApiOperation } from "@/types/openapi"
-import { toTitleCase, formatDate } from "@/lib/format"
-import { BADGE_FIELDS, isDateField } from "@/lib/entity-fields"
+import { toTitleCase } from "@/lib/format"
 import { findResource } from "@/lib/openapi/find-resource"
+import { renderValue } from "@/components/freckle/value-renderer"
+
+import type { Metadata } from "next"
 
 interface EntityPageProps {
   params: Promise<{ slug: string; capability: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export async function generateMetadata({ params }: EntityPageProps): Promise<Metadata> {
+  const { slug, capability } = await params
+  const product = getProduct(slug)
+  return { title: `${toTitleCase(capability)} - ${product?.name ?? "Product"}` }
 }
 
 // ─── Singleton detail view (for endpoints returning objects) ───
@@ -33,29 +43,6 @@ function isPrimitive(v: unknown): boolean {
 /** Check if an object is flat (all values are primitives) */
 function isFlatObject(obj: Record<string, unknown>): boolean {
   return Object.values(obj).every(isPrimitive)
-}
-
-function renderPrimitive(key: string, value: unknown): React.ReactNode {
-  if (value === null || value === undefined) {
-    return <span className="text-muted-foreground">—</span>
-  }
-  if (BADGE_FIELDS.has(key)) {
-    return <Badge variant="outline">{String(value)}</Badge>
-  }
-  if (isDateField(key, value) && typeof value === "string") {
-    return formatDate(value)
-  }
-  if (typeof value === "boolean") {
-    return <Badge variant={value ? "default" : "secondary"}>{value ? "Yes" : "No"}</Badge>
-  }
-  if (typeof value === "number") {
-    return value.toLocaleString()
-  }
-  const str = String(value)
-  if (str.length > 200) {
-    return <span title={str}>{str.slice(0, 197)}...</span>
-  }
-  return str
 }
 
 /** Render a flat key-value row */
@@ -79,7 +66,7 @@ function FlatObjectCard({ title, data }: { title?: string; data: Record<string, 
       )}
       <CardContent className={title ? "" : "pt-6"}>
         {Object.entries(data).map(([key, value]) => (
-          <InfoRow key={key} label={toTitleCase(key)} value={renderPrimitive(key, value)} />
+          <InfoRow key={key} label={toTitleCase(key)} value={renderValue(key, value, undefined, { truncate: 200 })} />
         ))}
       </CardContent>
     </Card>
@@ -123,7 +110,7 @@ function NestedObjectCard({ title, data }: { title: string; data: Record<string,
         {primitives.length > 0 && (
           <div>
             {primitives.map(([key, value]) => (
-              <InfoRow key={key} label={toTitleCase(key)} value={renderPrimitive(key, value)} />
+              <InfoRow key={key} label={toTitleCase(key)} value={renderValue(key, value, undefined, { truncate: 200 })} />
             ))}
           </div>
         )}
@@ -153,7 +140,7 @@ function NestedObjectCard({ title, data }: { title: string; data: Record<string,
                       ? <div key={i} className="rounded-lg border bg-muted/30 p-3">
                           {Object.entries(item as Record<string, unknown>).map(([k, v]) => (
                             isPrimitive(v)
-                              ? <InfoRow key={k} label={toTitleCase(k)} value={renderPrimitive(k, v)} />
+                              ? <InfoRow key={k} label={toTitleCase(k)} value={renderValue(k, v, undefined, { truncate: 200 })} />
                               : Array.isArray(v) && v.every(isPrimitive)
                                 ? <div key={k} className="py-2"><p className="text-sm text-muted-foreground mb-1">{toTitleCase(k)}</p><StringList items={v.map(String)} /></div>
                                 : <InfoRow key={k} label={toTitleCase(k)} value={<code className="text-xs">{JSON.stringify(v)}</code>} />
@@ -182,7 +169,7 @@ function NestedObjectCard({ title, data }: { title: string; data: Record<string,
                         <p className="text-sm font-semibold mb-2">{toTitleCase(subKey)}</p>
                         {Object.entries(subValue as Record<string, unknown>).map(([k, v]) => (
                           isPrimitive(v)
-                            ? <InfoRow key={k} label={toTitleCase(k)} value={renderPrimitive(k, v)} />
+                            ? <InfoRow key={k} label={toTitleCase(k)} value={renderValue(k, v, undefined, { truncate: 200 })} />
                             : Array.isArray(v) && v.every(isPrimitive)
                               ? <div key={k} className="py-2"><p className="text-sm text-muted-foreground mb-1">{toTitleCase(k)}</p><StringList items={v.map(String)} /></div>
                               : <InfoRow key={k} label={toTitleCase(k)} value={<code className="text-xs">{JSON.stringify(v)}</code>} />
@@ -200,7 +187,7 @@ function NestedObjectCard({ title, data }: { title: string; data: Record<string,
                 <div key={key} className="border-b border-border/50 py-3 last:border-0">
                   <p className="text-sm font-medium text-muted-foreground mb-1">{toTitleCase(key)}</p>
                   {Object.entries(obj).map(([k, v]) => (
-                    <InfoRow key={k} label={toTitleCase(k)} value={renderPrimitive(k, v)} />
+                    <InfoRow key={k} label={toTitleCase(k)} value={renderValue(k, v, undefined, { truncate: 200 })} />
                   ))}
                 </div>
               )
@@ -250,7 +237,7 @@ function SingletonView({ data, actions }: { data: Record<string, unknown>; actio
         <Card>
           <CardContent className="pt-6">
             {primitiveEntries.map(([key, value]) => (
-              <InfoRow key={key} label={toTitleCase(key)} value={renderPrimitive(key, value)} />
+              <InfoRow key={key} label={toTitleCase(key)} value={renderValue(key, value, undefined, { truncate: 200 })} />
             ))}
           </CardContent>
         </Card>
@@ -288,7 +275,7 @@ function SingletonView({ data, actions }: { data: Record<string, unknown>; actio
   )
 }
 
-function ChildResourceLinks({ slug, resources }: { slug: string; resources: ApiResource[] }) {
+function ChildResourceLinks({ slug, resources, endpointsLabel }: { slug: string; resources: ApiResource[]; endpointsLabel: (count: number) => string }) {
   const navigable = resources.filter(c => !c.requiresParentId)
   if (navigable.length === 0) return null
 
@@ -305,7 +292,7 @@ function ChildResourceLinks({ slug, resources }: { slug: string; resources: ApiR
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                {child.operations.length} {child.operations.length === 1 ? "endpoint" : "endpoints"}
+                {endpointsLabel(child.operations.length)}
               </p>
             </CardContent>
           </Card>
@@ -336,6 +323,8 @@ async function EntityDataSection({
   operations: ApiOperation[]
   childResources: ApiResource[]
 }) {
+  const t = await getTranslations("generic")
+
   // Actions-only view (e.g., /operations)
   if (viewMode === "actions") {
     return (
@@ -349,7 +338,7 @@ async function EntityDataSection({
 
   // Parent resource with children but no data endpoint
   if (viewMode === "children") {
-    return <ChildResourceLinks slug={slug} resources={childResources} />
+    return <ChildResourceLinks slug={slug} resources={childResources} endpointsLabel={(count) => t("endpoints", { count })} />
   }
 
   // Empty — no GET, no children
@@ -366,7 +355,7 @@ async function EntityDataSection({
     }
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No data available for this resource.
+        {t("noData")}
       </p>
     )
   }
@@ -465,6 +454,7 @@ function EntitySkeleton() {
 export default async function GenericEntityPage({ params, searchParams }: EntityPageProps) {
   const { slug, capability } = await params
   const rawSearchParams = await searchParams
+  const t = await getTranslations("generic")
 
   const product = getProduct(slug)
   if (!product) notFound()
@@ -515,24 +505,33 @@ export default async function GenericEntityPage({ params, searchParams }: Entity
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage {capability} for {product.name}
-        </p>
+    <ProductShell
+      productId={product.id}
+      breadcrumbs={[
+        { label: "Freckle", href: "/" },
+        { label: product.name, href: `/p/${slug}` },
+        { label: title },
+      ]}
+    >
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">{title}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("manage", { entity: `${capability} for ${product.name}` })}
+          </p>
+        </div>
+        <Suspense fallback={<EntitySkeleton />}>
+          <EntityDataSection
+            slug={slug}
+            capability={capability}
+            searchParams={sp}
+            hasDetail={hasDetail}
+            viewMode={viewMode}
+            operations={operations}
+            childResources={childResources}
+          />
+        </Suspense>
       </div>
-      <Suspense fallback={<EntitySkeleton />}>
-        <EntityDataSection
-          slug={slug}
-          capability={capability}
-          searchParams={sp}
-          hasDetail={hasDetail}
-          viewMode={viewMode}
-          operations={operations}
-          childResources={childResources}
-        />
-      </Suspense>
-    </div>
+    </ProductShell>
   )
 }

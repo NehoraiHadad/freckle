@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Loader2, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SchemaForm } from "./schema-form";
+import { SchemaForm, type SchemaFormHandle } from "./schema-form";
+import { ErrorBanner } from "./error-banner";
 import type { ApiOperation, HttpMethod } from "@/types/openapi";
 
 interface OperationPanelProps {
@@ -130,6 +132,7 @@ export function OperationPanel({
   const [confirmOp, setConfirmOp] = useState<ApiOperation | null>(null);
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   const [error, setError] = useState<string | null>(null);
+  const schemaFormRef = useRef<SchemaFormHandle>(null);
   const router = useRouter();
   const t = useTranslations("operationPanel");
   const tc = useTranslations("common");
@@ -152,13 +155,17 @@ export function OperationPanel({
 
       const json = await res.json().catch(() => null);
       if (!res.ok || (json && json.success === false)) {
-        setError(json?.error?.message || te("actionFailed"));
+        const msg = json?.error?.message || te("actionFailed");
+        setError(msg);
+        toast.error(msg);
       } else {
+        toast.success(t("operationSuccess"));
         onActionComplete?.();
         router.refresh();
       }
     } catch {
       setError(te("network"));
+      toast.error(te("network"));
     } finally {
       setPendingOp(null);
       setConfirmOp(null);
@@ -202,7 +209,11 @@ export function OperationPanel({
       })}
 
       {error && (
-        <p role="alert" className="w-full text-sm text-destructive">{error}</p>
+        <ErrorBanner
+          error={{ code: "ACTION_ERROR", message: error }}
+          onDismiss={() => setError(null)}
+          className="w-full"
+        />
       )}
 
       <Dialog
@@ -227,6 +238,7 @@ export function OperationPanel({
           {confirmOp?.requestBodySchema && (
             <div className="min-h-0 flex-1 overflow-y-auto -mx-6 px-6">
               <SchemaForm
+                ref={schemaFormRef}
                 schema={confirmOp.requestBodySchema}
                 values={formValues}
                 onChange={setFormValues}
@@ -246,7 +258,11 @@ export function OperationPanel({
             <Button
               variant={confirmOp ? getMethodVariant(confirmOp.httpMethod) : "default"}
               onClick={() => {
-                if (confirmOp) executeOperation(confirmOp, formValues);
+                if (!confirmOp) return;
+                if (confirmOp.requestBodySchema && schemaFormRef.current) {
+                  if (!schemaFormRef.current.validate()) return;
+                }
+                executeOperation(confirmOp, formValues);
               }}
               disabled={pendingOp !== null}
             >

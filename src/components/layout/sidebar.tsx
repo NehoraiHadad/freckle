@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import logo from "../../../public/logo.png"
-import { useParams } from "next/navigation"
+import { useParams, usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import {
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings,
   LogOut,
+  ChevronRight,
 } from "lucide-react"
 
 import {
@@ -20,12 +21,23 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { SidebarNav, type NavItem } from "@/components/layout/sidebar-nav"
 import { ProductSwitcher } from "@/components/freckle/product-switcher"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible"
 import { logout } from "@/actions/auth-actions"
 import { getResourceIcon } from "@/lib/resource-icons"
 import type { Product, ProductForDisplay } from "@/types/product"
@@ -37,43 +49,11 @@ interface AppSidebarProps {
   resourceTree?: ApiResource[]
 }
 
-function getProductNav(
-  product: Product | ProductForDisplay,
-  t: ReturnType<typeof useTranslations>,
-  resourceTree: ApiResource[],
-): NavItem[] {
-  const slug = product.id
-  const items: NavItem[] = [
-    { href: `/p/${slug}`, label: t("dashboard"), icon: LayoutDashboard },
-  ]
-
-  // Build from OpenAPI resource tree
-  for (const resource of resourceTree) {
-    if (resource.requiresParentId) continue
-    if (resource.key === "health") continue
-
-    const Icon = getResourceIcon(resource.pathSegment)
-    const label = t.has(resource.pathSegment) ? t(resource.pathSegment) : resource.name
-    items.push({ href: `/p/${slug}/${resource.key}`, label, icon: Icon })
-
-    // Add navigable children (those that don't require parent ID and have a GET endpoint)
-    for (const child of resource.children) {
-      if (child.requiresParentId) continue
-      const hasGet = child.operations.some(op => op.httpMethod === "GET")
-      if (!hasGet) continue
-      const childIcon = getResourceIcon(child.pathSegment)
-      const childLabel = t.has(child.pathSegment) ? t(child.pathSegment) : child.name
-      items.push({ href: `/p/${slug}/${child.key}`, label: `  ${childLabel}`, icon: childIcon })
-    }
-  }
-
-  return items
-}
-
 export function AppSidebar({ products, currentProduct, resourceTree }: AppSidebarProps) {
   const t = useTranslations("nav")
   const tAuth = useTranslations("auth")
   const params = useParams()
+  const pathname = usePathname()
   const slug = params?.slug as string | undefined
 
   const activeProduct = currentProduct ?? products.find((p) => p.id === slug) ?? null
@@ -129,7 +109,12 @@ export function AppSidebar({ products, currentProduct, resourceTree }: AppSideba
             <SidebarSeparator />
             <SidebarGroup>
               <SidebarGroupLabel>{activeProduct.name}</SidebarGroupLabel>
-              <SidebarNav items={getProductNav(activeProduct, t, resourceTree ?? [])} />
+              <ProductResourceNav
+                productId={activeProduct.id}
+                resourceTree={resourceTree ?? []}
+                pathname={pathname}
+                t={t}
+              />
             </SidebarGroup>
           </>
         )}
@@ -154,5 +139,116 @@ export function AppSidebar({ products, currentProduct, resourceTree }: AppSideba
 
       <SidebarRail />
     </Sidebar>
+  )
+}
+
+function ProductResourceNav({
+  productId,
+  resourceTree,
+  pathname,
+  t,
+}: {
+  productId: string
+  resourceTree: ApiResource[]
+  pathname: string
+  t: ReturnType<typeof useTranslations>
+}) {
+  const dashboardHref = `/p/${productId}`
+  const isDashboardActive = pathname === dashboardHref
+
+  // Filter navigable children (don't require parent ID and have a GET endpoint)
+  function getNavigableChildren(resource: ApiResource): ApiResource[] {
+    return resource.children.filter(
+      (child) => !child.requiresParentId && child.operations.some((op) => op.httpMethod === "GET")
+    )
+  }
+
+  return (
+    <SidebarMenu>
+      {/* Dashboard item */}
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isDashboardActive} tooltip={t("dashboard")}>
+          <Link href={dashboardHref}>
+            <LayoutDashboard />
+            <span>{t("dashboard")}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+
+      {/* Resource items */}
+      {resourceTree.map((resource) => {
+        if (resource.requiresParentId) return null
+        if (resource.key === "health") return null
+
+        const Icon = getResourceIcon(resource.pathSegment)
+        const label = t.has(resource.pathSegment) ? t(resource.pathSegment) : resource.name
+        const href = `/p/${productId}/${resource.key}`
+        const isActive = pathname === href || pathname.startsWith(href + "/")
+        const navigableChildren = getNavigableChildren(resource)
+
+        // Resource with navigable children → collapsible group
+        if (navigableChildren.length > 0) {
+          const isChildActive = navigableChildren.some((child) => {
+            const childHref = `/p/${productId}/${child.key}`
+            return pathname === childHref || pathname.startsWith(childHref + "/")
+          })
+
+          return (
+            <Collapsible key={resource.key} defaultOpen={isActive || isChildActive} className="group/collapsible">
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
+                  <Link href={href}>
+                    <Icon />
+                    <span>{label}</span>
+                  </Link>
+                </SidebarMenuButton>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="absolute end-1 top-1.5 flex size-5 items-center justify-center rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    aria-label={`Toggle ${label}`}
+                  >
+                    <ChevronRight className="size-3 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {navigableChildren.map((child) => {
+                      const ChildIcon = getResourceIcon(child.pathSegment)
+                      const childLabel = t.has(child.pathSegment) ? t(child.pathSegment) : child.name
+                      const childHref = `/p/${productId}/${child.key}`
+                      const childActive = pathname === childHref || pathname.startsWith(childHref + "/")
+
+                      return (
+                        <SidebarMenuSubItem key={child.key}>
+                          <SidebarMenuSubButton asChild isActive={childActive}>
+                            <Link href={childHref}>
+                              <ChildIcon className="size-3.5" />
+                              <span>{childLabel}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )
+                    })}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          )
+        }
+
+        // Resource without navigable children → simple item
+        return (
+          <SidebarMenuItem key={resource.key}>
+            <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
+              <Link href={href}>
+                <Icon />
+                <span>{label}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
   )
 }

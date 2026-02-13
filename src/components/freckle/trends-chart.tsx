@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   LineChart,
   Line,
@@ -21,6 +21,7 @@ import type { TrendsResponse } from "@/types/admin-api";
 interface TrendsChartProps {
   productSlug: string;
   initialPeriod?: "24h" | "7d" | "30d" | "90d";
+  initialData?: TrendsResponse;
   className?: string;
 }
 
@@ -45,13 +46,14 @@ function camelToTitle(str: string): string {
 export function TrendsChart({
   productSlug,
   initialPeriod = "7d",
+  initialData,
   className,
 }: TrendsChartProps) {
   const t = useTranslations("trends");
   const te = useTranslations("errors");
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>(initialPeriod);
-  const [data, setData] = useState<TrendsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<TrendsResponse | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<{ code: string; message: string } | null>(
     null
   );
@@ -76,7 +78,13 @@ export function TrendsChart({
     }
   }, [productSlug, period, te]);
 
+  // Fetch on period change, but skip the initial mount if we have server-provided data
+  const initialFetchSkipped = useRef(!!initialData);
   useEffect(() => {
+    if (initialFetchSkipped.current) {
+      initialFetchSkipped.current = false;
+      return;
+    }
     fetchData();
   }, [fetchData]);
 

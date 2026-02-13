@@ -139,7 +139,22 @@
   },
   "operationPanel": {
     "actions": "Actions",
-    "confirmDescription": "Execute {method} request to {path}. This action may not be reversible."
+    "confirmDescription": "Execute {method} request to {path}. This action may not be reversible.",
+    "operationSuccess": "Operation completed successfully"
+  },
+  "toast": {
+    "operationSuccess": "Operation completed successfully",
+    "operationError": "Operation failed: {error}",
+    "productDeleted": "Product deleted successfully",
+    "productRegistered": "Product registered successfully",
+    "productUpdated": "Product updated successfully"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "backToDashboard": "Back to Dashboard",
+    "productNotFound": "Product not found",
+    "productDescription": "This product doesn't exist or you don't have access to it."
   },
   "trends": {
     "title": "Trends"
@@ -180,5 +195,59 @@
     "result": "Result",
     "details": "Details",
     "noLogs": "No audit log entries found."
+  },
+  "generic": {
+    "search": "Search",
+    "searchPlaceholder": "Search {entity}...",
+    "noResults": "No results found",
+    "manage": "Manage {entity}",
+    "noData": "No data available",
+    "backTo": "Back to {entity}",
+    "info": "Info",
+    "stats": "Stats",
+    "metadata": "Metadata",
+    "replies": "Replies",
+    "noMetadata": "No metadata available",
+    "noStats": "No statistics available",
+    "noItems": "No {entity} found",
+    "endpoints": "{count} endpoints",
+    "sortBy": "Sort by {column}",
+    "skipToContent": "Skip to main content",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "remove": "Remove",
+    "addEntry": "Add entry",
+    "addItem": "Add {name}",
+    "items": "items",
+    "links": "Links",
+    "fields": "Fields",
+    "resources": "Resources"
+  },
+  "commandPalette": {
+    "placeholder": "Type a command or search...",
+    "noResults": "No results found.",
+    "navigation": "Navigation",
+    "products": "Products",
+    "resources": "Resources",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "auditLog": "Audit Log"
+  },
+  "validation": {
+    "required": "This field is required",
+    "minLength": "Must be at least {min} characters",
+    "maxLength": "Must be at most {max} characters",
+    "minimum": "Must be at least {min}",
+    "maximum": "Must be at most {max}",
+    "pattern": "Invalid format"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "monthsAgo": "{count}mo ago"
   }
 }

@@ -1,22 +1,40 @@
+import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { getClientManager } from "@/lib/api-client/product-client-manager"
 import { getProduct } from "@/lib/db/products"
 import { classifyError } from "@/lib/api-client/errors"
 import { notFound } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 import { EntityDetail } from "@/components/freckle/entity-detail"
 import { OperationPanel } from "@/components/freckle/operation-panel"
 import { ErrorBanner } from "@/components/freckle/error-banner"
+import { ProductShell } from "@/components/layout/product-shell"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { getResourceOperations, getProductResources } from "@/lib/db/api-resources"
 import type { ApiResource } from "@/types/openapi"
 import { SubResourceTab } from "@/components/freckle/sub-resource-tab"
 import { toTitleCase, formatDate } from "@/lib/format"
-import { HIDDEN_FIELDS, BADGE_FIELDS, isDateField } from "@/lib/entity-fields"
+import { HIDDEN_FIELDS } from "@/lib/entity-fields"
 import { findResource } from "@/lib/openapi/find-resource"
+import { renderValue } from "@/components/freckle/value-renderer"
 
 interface EntityDetailPageProps {
   params: Promise<{ slug: string; capability: string; id: string }>
+}
+
+export async function generateMetadata({ params }: EntityDetailPageProps): Promise<Metadata> {
+  const { slug, capability, id } = await params
+  const product = getProduct(slug)
+  try {
+    const client = getClientManager().getClient(slug)
+    const entity = await client.entity(capability).get(id)
+    const title = String(
+      entity.title || entity.name || entity.email || `${toTitleCase(capability)} ${id.slice(0, 8)}`
+    )
+    return { title }
+  } catch {
+    return { title: `${toTitleCase(capability)} - ${product?.name ?? "Product"}` }
+  }
 }
 
 interface TabDef {
@@ -35,56 +53,7 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-function renderValue(key: string, value: unknown): React.ReactNode {
-  if (value === null || value === undefined) {
-    return <span className="text-muted-foreground">—</span>
-  }
-
-  if (BADGE_FIELDS.has(key)) {
-    return <Badge variant="outline">{String(value)}</Badge>
-  }
-
-  if (isDateField(key, value) && typeof value === "string") {
-    return formatDate(value)
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-muted-foreground">—</span>
-    if (value.every(v => typeof v === "string" || typeof v === "number")) {
-      const shown = value.slice(0, 5)
-      return (
-        <div className="flex flex-wrap gap-1">
-          {shown.map((v, i) => <Badge key={i} variant="secondary" className="text-xs font-normal">{String(v)}</Badge>)}
-          {value.length > 5 && <span className="text-xs text-muted-foreground">+{value.length - 5}</span>}
-        </div>
-      )
-    }
-    return <span className="text-xs text-muted-foreground">{value.length} items</span>
-  }
-
-  if (typeof value === "object" && !Array.isArray(value)) {
-    const obj = value as Record<string, unknown>
-    if ("name" in obj && obj.name) return String(obj.name)
-    if ("email" in obj && obj.email) return String(obj.email)
-    const entries = Object.entries(obj).slice(0, 3)
-    if (entries.length > 0 && entries.every(([, v]) => typeof v !== "object")) {
-      return <span className="text-xs text-muted-foreground">{entries.map(([k, v]) => `${toTitleCase(k)}: ${v}`).join(", ")}</span>
-    }
-    return <span className="text-xs text-muted-foreground">{Object.keys(obj).length} fields</span>
-  }
-
-  if (typeof value === "boolean") {
-    return <Badge variant={value ? "default" : "secondary"}>{value ? "Yes" : "No"}</Badge>
-  }
-
-  if (typeof value === "number") {
-    return value.toLocaleString()
-  }
-
-  return String(value)
-}
-
-function InfoTab({ entity }: { entity: Record<string, unknown> }) {
+function InfoTab({ entity, labels }: { entity: Record<string, unknown>; labels: { yes: string; no: string; items: string; fields: string } }) {
   const entries = Object.entries(entity).filter(([key]) => !HIDDEN_FIELDS.has(key))
 
   return (
@@ -95,7 +64,7 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
         </InfoRow>
         {entries.map(([key, value]) => (
           <InfoRow key={key} label={toTitleCase(key)}>
-            {renderValue(key, value)}
+            {renderValue(key, value, labels)}
           </InfoRow>
         ))}
       </CardContent>
@@ -103,12 +72,12 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
   )
 }
 
-function MetadataTab({ data }: { data: Record<string, unknown> }) {
+function MetadataTab({ data, labels }: { data: Record<string, unknown>; labels: { yes: string; no: string; items: string; fields: string; noMetadata: string } }) {
   const entries = Object.entries(data)
   if (entries.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No metadata available.
+        {labels.noMetadata}
       </p>
     )
   }
@@ -118,7 +87,7 @@ function MetadataTab({ data }: { data: Record<string, unknown> }) {
       <CardContent className="pt-6">
         {entries.map(([key, value]) => (
           <InfoRow key={key} label={toTitleCase(key)}>
-            {renderValue(key, value)}
+            {renderValue(key, value, labels)}
           </InfoRow>
         ))}
       </CardContent>
@@ -126,12 +95,12 @@ function MetadataTab({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function StatsTab({ stats }: { stats: Record<string, unknown> }) {
+function StatsTab({ stats, labels }: { stats: Record<string, unknown>; labels: { yes: string; no: string; noStats: string } }) {
   const entries = Object.entries(stats)
   if (entries.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No stats available.
+        {labels.noStats}
       </p>
     )
   }
@@ -148,7 +117,7 @@ function StatsTab({ stats }: { stats: Record<string, unknown> }) {
                 : typeof value === "string" && /^\d+(\.\d+)?$/.test(value)
                   ? Number(value).toLocaleString()
                   : typeof value === "boolean"
-                    ? (value ? "Yes" : "No")
+                    ? (value ? labels.yes : labels.no)
                     : String(value ?? "—")}
             </p>
           </CardContent>
@@ -160,8 +129,19 @@ function StatsTab({ stats }: { stats: Record<string, unknown> }) {
 
 export default async function GenericEntityDetailPage({ params }: EntityDetailPageProps) {
   const { slug, capability, id } = await params
+  const t = await getTranslations("generic")
   const product = getProduct(slug)
   if (!product) notFound()
+
+  // Shared labels for sub-components
+  const labels = {
+    yes: t("yes"),
+    no: t("no"),
+    items: t("items"),
+    fields: t("fields"),
+    noMetadata: t("noMetadata"),
+    noStats: t("noStats"),
+  }
 
   // Verify this capability/resource exists in the OpenAPI resource tree
   const allResources = getProductResources(slug)
@@ -189,22 +169,22 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
 
     // Build tabs
     const tabs: TabDef[] = [
-      { id: "info", label: "Info", content: <InfoTab entity={entity} /> },
+      { id: "info", label: t("info"), content: <InfoTab entity={entity} labels={labels} /> },
     ]
 
     if (entity.stats && typeof entity.stats === "object") {
       tabs.push({
         id: "stats",
-        label: "Stats",
-        content: <StatsTab stats={entity.stats as Record<string, unknown>} />,
+        label: t("stats"),
+        content: <StatsTab stats={entity.stats as Record<string, unknown>} labels={labels} />,
       })
     }
 
     if (entity.metadata && typeof entity.metadata === "object") {
       tabs.push({
         id: "metadata",
-        label: "Metadata",
-        content: <MetadataTab data={entity.metadata as Record<string, unknown>} />,
+        label: t("metadata"),
+        content: <MetadataTab data={entity.metadata as Record<string, unknown>} labels={labels} />,
       })
     }
 
@@ -213,7 +193,7 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
       const repliesCount = entity.replies.length
       tabs.push({
         id: "replies",
-        label: "Replies",
+        label: t("replies"),
         badge: repliesCount,
         content: (
           <Card>
@@ -292,16 +272,26 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
     }
 
     return (
-      <EntityDetail
-        title={title}
-        subtitle={subtitle}
-        backLink={{
-          href: `/p/${slug}/${capability}`,
-          label: `Back to ${toTitleCase(capability)}`,
-        }}
-        tabs={tabs}
-        actions={actionsElement}
-      />
+      <ProductShell
+        productId={product.id}
+        breadcrumbs={[
+          { label: "Freckle", href: "/" },
+          { label: product.name, href: `/p/${slug}` },
+          { label: toTitleCase(capability), href: `/p/${slug}/${capability}` },
+          { label: title },
+        ]}
+      >
+        <EntityDetail
+          title={title}
+          subtitle={subtitle}
+          backLink={{
+            href: `/p/${slug}/${capability}`,
+            label: t("backTo", { entity: toTitleCase(capability) }),
+          }}
+          tabs={tabs}
+          actions={actionsElement}
+        />
+      </ProductShell>
     )
   } catch (error) {
     const classified = classifyError(error)
@@ -309,12 +299,21 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
       notFound()
     }
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">{toTitleCase(capability)} Detail</h1>
-        <ErrorBanner
-          error={{ code: classified.category, message: classified.userMessage }}
-        />
-      </div>
+      <ProductShell
+        productId={product.id}
+        breadcrumbs={[
+          { label: "Freckle", href: "/" },
+          { label: product.name, href: `/p/${slug}` },
+          { label: toTitleCase(capability), href: `/p/${slug}/${capability}` },
+        ]}
+      >
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold">{toTitleCase(capability)} Detail</h1>
+          <ErrorBanner
+            error={{ code: classified.category, message: classified.userMessage }}
+          />
+        </div>
+      </ProductShell>
     )
   }
 }

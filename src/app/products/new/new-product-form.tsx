@@ -3,11 +3,13 @@
 import { useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { ErrorBanner } from "@/components/freckle/error-banner";
 import { addProductAction, testConnection } from "@/actions/product-actions";
 
 export function NewProductForm() {
@@ -20,10 +22,13 @@ export function NewProductForm() {
     meta?: unknown;
   } | null>(null);
 
+  const tToast = useTranslations("toast");
+
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | null, formData: FormData) => {
       const result = await addProductAction(_prev, formData);
       if (result.success) {
+        toast.success(tToast("productRegistered"));
         const meta = testResult?.meta as Record<string, unknown> | undefined;
         const slug = meta?.product as string;
         if (slug) {
@@ -140,10 +145,10 @@ export function NewProductForm() {
         </Card>
 
         {testResult?.error && (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="size-4 shrink-0" />
-            {testResult.error}
-          </div>
+          <ErrorBanner
+            error={{ code: "CONNECTION_ERROR", message: testResult.error }}
+            onDismiss={() => setTestResult(null)}
+          />
         )}
 
         {meta && (
@@ -179,10 +184,9 @@ export function NewProductForm() {
         )}
 
         {state?.error && (
-          <div id="form-error" role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="size-4 shrink-0" />
-            {state.error}
-          </div>
+          <ErrorBanner
+            error={{ code: "FORM_ERROR", message: state.error }}
+          />
         )}
 
         <Button

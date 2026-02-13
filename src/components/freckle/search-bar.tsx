@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Search, X } from "lucide-react";
@@ -26,6 +26,7 @@ export function SearchBar({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
   const t = useTranslations("common");
   const [value, setValue] = useState(
     defaultValue || searchParams.get(paramName) || ""
@@ -41,9 +42,11 @@ export function SearchBar({
         params.delete(paramName);
       }
       params.set("page", "1");
-      router.push(`${pathname}?${params.toString()}`);
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
     },
-    [router, pathname, searchParams, paramName]
+    [router, pathname, searchParams, paramName, startTransition]
   );
 
   const handleChange = (newValue: string) => {
@@ -70,7 +73,7 @@ export function SearchBar({
   }, []);
 
   return (
-    <div role="search" className={cn("relative", className)}>
+    <div role="search" className={cn("relative", isPending && "opacity-60", className)}>
       <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
       <Input
         type="search"

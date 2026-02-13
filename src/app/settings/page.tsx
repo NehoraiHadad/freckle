@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Shell } from "@/components/layout/shell";
 import { getAllProducts } from "@/lib/db/products";
 import { getAllPreferences } from "@/lib/db/preferences";
 import { SettingsForm } from "./settings-form";
+
+export const metadata: Metadata = {
+  title: "Settings",
+};
 
 export default async function SettingsPage() {
   const preferences = getAllPreferences();

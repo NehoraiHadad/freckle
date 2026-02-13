@@ -3,11 +3,13 @@
 import { useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { ErrorBanner } from "@/components/freckle/error-banner";
 import { updateProductAction, testConnection } from "@/actions/product-actions";
 import type { Product } from "@/types/product";
 
@@ -28,11 +30,14 @@ export function EditProductForm({ product }: EditProductFormProps) {
 
   const boundAction = updateProductAction.bind(null, product.id);
 
+  const tToast = useTranslations("toast");
+
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | null, formData: FormData) => {
       formData.set("status", isActive ? "active" : "inactive");
       const result = await boundAction(_prev, formData);
       if (result.success) {
+        toast.success(tToast("productUpdated"));
         router.push(`/p/${product.id}`);
       }
       return result;
@@ -153,10 +158,10 @@ export function EditProductForm({ product }: EditProductFormProps) {
         </Card>
 
         {testResult?.error && (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="size-4 shrink-0" />
-            {testResult.error}
-          </div>
+          <ErrorBanner
+            error={{ code: "CONNECTION_ERROR", message: testResult.error }}
+            onDismiss={() => setTestResult(null)}
+          />
         )}
 
         {testResult?.meta != null && !testResult.error && (
@@ -167,10 +172,9 @@ export function EditProductForm({ product }: EditProductFormProps) {
         )}
 
         {state?.error && (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            <AlertCircle className="size-4 shrink-0" />
-            {state.error}
-          </div>
+          <ErrorBanner
+            error={{ code: "FORM_ERROR", message: state.error }}
+          />
         )}
 
         <Button

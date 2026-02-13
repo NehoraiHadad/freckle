@@ -139,7 +139,22 @@
   },
   "operationPanel": {
     "actions": "פעולות",
-    "confirmDescription": "ביצוע בקשת {method} ל-{path}. ייתכן שפעולה זו אינה הפיכה."
+    "confirmDescription": "ביצוע בקשת {method} ל-{path}. ייתכן שפעולה זו אינה הפיכה.",
+    "operationSuccess": "הפעולה הושלמה בהצלחה"
+  },
+  "toast": {
+    "operationSuccess": "הפעולה הושלמה בהצלחה",
+    "operationError": "הפעולה נכשלה: {error}",
+    "productDeleted": "המוצר נמחק בהצלחה",
+    "productRegistered": "המוצר נרשם בהצלחה",
+    "productUpdated": "המוצר עודכן בהצלחה"
+  },
+  "notFound": {
+    "title": "הדף לא נמצא",
+    "description": "הדף שאתה מחפש אינו קיים או הועבר.",
+    "backToDashboard": "חזרה ללוח הבקרה",
+    "productNotFound": "מוצר לא נמצא",
+    "productDescription": "מוצר זה אינו קיים או שאין לך הרשאת גישה אליו."
   },
   "trends": {
     "title": "מגמות"
@@ -180,5 +195,59 @@
     "result": "תוצאה",
     "details": "פרטים",
     "noLogs": "לא נמצאו רשומות ביומן הפעילות."
+  },
+  "generic": {
+    "search": "חיפוש",
+    "searchPlaceholder": "חיפוש {entity}...",
+    "noResults": "לא נמצאו תוצאות",
+    "manage": "ניהול {entity}",
+    "noData": "אין נתונים זמינים",
+    "backTo": "חזרה ל{entity}",
+    "info": "מידע",
+    "stats": "סטטיסטיקות",
+    "metadata": "מטא-דאטא",
+    "replies": "תגובות",
+    "noMetadata": "אין מטא-דאטא זמין",
+    "noStats": "אין סטטיסטיקות זמינות",
+    "noItems": "לא נמצאו {entity}",
+    "endpoints": "{count} נקודות קצה",
+    "sortBy": "מיון לפי {column}",
+    "skipToContent": "דלג לתוכן הראשי",
+    "yes": "כן",
+    "no": "לא",
+    "enabled": "מופעל",
+    "disabled": "מושבת",
+    "remove": "הסר",
+    "addEntry": "הוסף רשומה",
+    "addItem": "הוסף {name}",
+    "items": "פריטים",
+    "links": "קישורים",
+    "fields": "שדות",
+    "resources": "משאבים"
+  },
+  "commandPalette": {
+    "placeholder": "הקלד פקודה או חפש...",
+    "noResults": "לא נמצאו תוצאות.",
+    "navigation": "ניווט",
+    "products": "מוצרים",
+    "resources": "משאבים",
+    "dashboard": "לוח בקרה",
+    "settings": "הגדרות",
+    "auditLog": "יומן פעולות"
+  },
+  "validation": {
+    "required": "שדה חובה",
+    "minLength": "חייב להיות לפחות {min} תווים",
+    "maxLength": "חייב להיות לכל היותר {max} תווים",
+    "minimum": "חייב להיות לפחות {min}",
+    "maximum": "חייב להיות לכל היותר {max}",
+    "pattern": "פורמט לא תקין"
+  },
+  "time": {
+    "justNow": "הרגע",
+    "minutesAgo": "לפני {count} דק׳",
+    "hoursAgo": "לפני {count} שע׳",
+    "daysAgo": "לפני {count} ימים",
+    "monthsAgo": "לפני {count} חודשים"
   }
 }

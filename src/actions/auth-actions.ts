@@ -59,6 +59,12 @@ export async function login(
 
   await createSession();
 
+  // Check for returnTo redirect (from auth middleware)
+  const returnTo = formData.get("returnTo") as string | null;
+  if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+    redirect(returnTo);
+  }
+
   const defaultProduct = getPreference("defaultProduct");
   if (defaultProduct) {
     redirect(`/p/${defaultProduct}`);

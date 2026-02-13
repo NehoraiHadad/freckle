@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Package, Plus, Pencil } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -17,6 +18,10 @@ import {
 } from "@/components/ui/table";
 import { getAllProducts } from "@/lib/db/products";
 import { DeleteProductButton } from "./delete-button";
+
+export const metadata: Metadata = {
+  title: "Products",
+};
 
 export default async function ProductsPage() {
   const products = getAllProducts();

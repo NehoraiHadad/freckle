@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { Shell } from "@/components/layout/shell";
@@ -39,6 +40,10 @@ async function AuditLogSection({
     />
   );
 }
+
+export const metadata: Metadata = {
+  title: "Audit Log",
+};
 
 export default async function AuditLogPage({ searchParams }: AuditLogPageProps) {
   const rawSearchParams = await searchParams;

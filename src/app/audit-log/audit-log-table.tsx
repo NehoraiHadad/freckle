@@ -1,15 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -18,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DataTable, type ColumnDef } from "@/components/freckle/data-table";
+import { ScrollText } from "lucide-react";
 import type { AuditLogEntry } from "@/types/product";
+import type { PaginationMeta } from "@/types/admin-api";
 
 interface AuditLogTableProps {
   logs: AuditLogEntry[];
@@ -31,7 +25,9 @@ interface AuditLogTableProps {
   products: { id: string; name: string }[];
 }
 
-function buildUrl(
+type AuditRow = Omit<AuditLogEntry, "id"> & { id: string };
+
+function buildFilterUrl(
   params: Record<string, string | undefined>,
   overrides: Record<string, string>,
 ): string {
@@ -59,9 +55,85 @@ export function AuditLogTable({
 }: AuditLogTableProps) {
   const router = useRouter();
   const t = useTranslations("auditLog");
-  const tp = useTranslations("pagination");
 
-  const totalPages = Math.ceil(total / pageSize);
+  const productMap = new Map(products.map((p) => [p.id, p.name]));
+
+  // Map numeric id to string for DataTable compatibility
+  const data: AuditRow[] = logs.map(({ id, ...rest }) => ({
+    ...rest,
+    id: String(id),
+  }));
+
+  const meta: PaginationMeta = {
+    total,
+    page,
+    pageSize,
+    hasMore: page * pageSize < total,
+  };
+
+  const columns: ColumnDef<AuditRow>[] = [
+    {
+      key: "createdAt",
+      header: t("timestamp"),
+      sortable: true,
+      render: (row) => (
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
+          {new Date(row.createdAt).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: "productId",
+      header: t("product"),
+      render: (row) => (
+        <span className="text-sm">{productMap.get(row.productId) ?? row.productId}</span>
+      ),
+    },
+    {
+      key: "action",
+      header: t("action"),
+      sortable: true,
+      render: (row) => (
+        <Badge variant="outline" className="text-xs font-mono">
+          {row.action}
+        </Badge>
+      ),
+    },
+    {
+      key: "entity",
+      header: t("entity"),
+      render: (row) => (
+        <span className="text-xs">
+          {row.entityType && row.entityId
+            ? `${row.entityType}:${row.entityId}`
+            : "\u2014"}
+        </span>
+      ),
+    },
+    {
+      key: "result",
+      header: t("result"),
+      render: (row) => (
+        <Badge
+          variant={row.result === "success" ? "secondary" : "destructive"}
+          className="text-xs"
+        >
+          {row.result}
+        </Badge>
+      ),
+    },
+    {
+      key: "details",
+      header: t("details"),
+      render: (row) => (
+        <span className="max-w-[200px] truncate text-xs text-muted-foreground block">
+          {row.details ? JSON.stringify(row.details).slice(0, 80) : "\u2014"}
+        </span>
+      ),
+    },
+  ];
+
+  const emptyIcon: ReactNode = <ScrollText className="size-12" />;
 
   return (
     <div className="space-y-4">
@@ -69,10 +141,10 @@ export function AuditLogTable({
         <Select
           value={searchParams.productId || "__all__"}
           onValueChange={(v) =>
-            router.push(buildUrl(searchParams, { productId: v, page: "1" }))
+            router.push(buildFilterUrl(searchParams, { productId: v, page: "1" }))
           }
         >
-          <SelectTrigger size="sm" className="w-auto">
+          <SelectTrigger size="sm" className="w-auto" aria-label={t("filterByProduct")}>
             <SelectValue placeholder={t("filterByProduct")} />
           </SelectTrigger>
           <SelectContent>
@@ -88,10 +160,10 @@ export function AuditLogTable({
         <Select
           value={searchParams.action || "__all__"}
           onValueChange={(v) =>
-            router.push(buildUrl(searchParams, { action: v, page: "1" }))
+            router.push(buildFilterUrl(searchParams, { action: v, page: "1" }))
           }
         >
-          <SelectTrigger size="sm" className="w-auto">
+          <SelectTrigger size="sm" className="w-auto" aria-label={t("filterByAction")}>
             <SelectValue placeholder={t("filterByAction")} />
           </SelectTrigger>
           <SelectContent>
@@ -104,95 +176,18 @@ export function AuditLogTable({
         </Select>
       </div>
 
-      {logs.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">{t("noLogs")}</p>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("timestamp")}</TableHead>
-                  <TableHead>{t("product")}</TableHead>
-                  <TableHead>{t("action")}</TableHead>
-                  <TableHead>{t("entity")}</TableHead>
-                  <TableHead>{t("result")}</TableHead>
-                  <TableHead className="max-w-[200px]">{t("details")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-sm">{log.productId}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs font-mono">
-                        {log.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {log.entityType && log.entityId
-                        ? `${log.entityType}:${log.entityId}`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={log.result === "success" ? "secondary" : "destructive"}
-                        className="text-xs"
-                      >
-                        {log.result}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                      {log.details ? JSON.stringify(log.details).slice(0, 80) : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {tp("showing")} {(page - 1) * pageSize + 1}–
-              {Math.min(page * pageSize, total)} {tp("of")} {total}
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon-xs"
-                disabled={page <= 1}
-                onClick={() =>
-                  router.push(
-                    buildUrl(searchParams, { page: String(page - 1) }),
-                  )
-                }
-                aria-label={tp("previousPage")}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <span className="px-2 text-sm">
-                {tp("page", { page })}
-              </span>
-              <Button
-                variant="outline"
-                size="icon-xs"
-                disabled={page >= totalPages}
-                onClick={() =>
-                  router.push(
-                    buildUrl(searchParams, { page: String(page + 1) }),
-                  )
-                }
-                aria-label={tp("nextPage")}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
+      <DataTable
+        data={data}
+        meta={meta}
+        columns={columns}
+        searchParams={searchParams}
+        baseUrl="/audit-log"
+        emptyState={{
+          icon: emptyIcon,
+          title: t("noLogs"),
+          description: t("noLogs"),
+        }}
+      />
     </div>
   );
 }

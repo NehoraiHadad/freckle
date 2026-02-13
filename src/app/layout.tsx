@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "next-themes"
 import { NextIntlClientProvider } from "next-intl"
-import { getLocale, getMessages } from "next-intl/server"
+import { getLocale, getMessages, getTranslations } from "next-intl/server"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
@@ -12,7 +12,10 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Freckle - Admin Console",
+  title: {
+    default: "Freckle",
+    template: "%s - Freckle",
+  },
   description: "Universal admin panel for managing your products",
 }
 
@@ -23,6 +26,7 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale()
   const messages = await getMessages()
+  const t = await getTranslations("generic")
 
   return (
     <html lang={locale} dir={locale === "he" ? "rtl" : "ltr"} suppressHydrationWarning>
@@ -31,7 +35,7 @@ export default async function RootLayout({
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:outline-none"
         >
-          Skip to main content
+          {t("skipToContent")}
         </a>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider

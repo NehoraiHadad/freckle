@@ -16,6 +16,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { CommandPalette } from "@/components/freckle/command-palette"
+import type { ApiResource } from "@/types/openapi"
 
 export interface BreadcrumbSegment {
   label: string
@@ -24,6 +26,9 @@ export interface BreadcrumbSegment {
 
 interface AppHeaderProps {
   breadcrumbs?: BreadcrumbSegment[]
+  products?: { id: string; name: string }[]
+  currentProductId?: string | null
+  resourceTree?: ApiResource[]
 }
 
 function ThemeToggle() {
@@ -44,7 +49,7 @@ function ThemeToggle() {
   )
 }
 
-export function AppHeader({ breadcrumbs }: AppHeaderProps) {
+export function AppHeader({ breadcrumbs, products, currentProductId, resourceTree }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
       <SidebarTrigger className="-ms-1" />
@@ -75,7 +80,12 @@ export function AppHeader({ breadcrumbs }: AppHeaderProps) {
         </Breadcrumb>
       )}
 
-      <div className="ms-auto flex items-center gap-1">
+      <div className="ms-auto flex items-center gap-2">
+        <CommandPalette
+          products={products ?? []}
+          currentProductId={currentProductId}
+          resourceTree={resourceTree}
+        />
         <ThemeToggle />
       </div>
     </header>
