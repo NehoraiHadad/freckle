@@ -228,7 +228,7 @@ export function DataTable<T extends { id: string }>({
                   onClick={() => onRowClick?.(item)}
                   {...(onRowClick ? {
                     tabIndex: 0,
-                    role: "link",
+                    role: "button",
                     onKeyDown: (e: React.KeyboardEvent) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
@@ -308,7 +308,7 @@ export function DataTable<T extends { id: string }>({
                     onClick={() => onRowClick?.(item)}
                     {...(onRowClick ? {
                       tabIndex: 0,
-                      role: "link",
+                      role: "button",
                       onKeyDown: (e: React.KeyboardEvent) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();

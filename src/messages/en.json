@@ -48,7 +48,8 @@
     "noProductsDescription": "Add your first product to start managing it from Freckle.",
     "addProduct": "Add Product",
     "registerProduct": "Register Product",
-    "inactiveProducts": "Inactive Products"
+    "inactiveProducts": "Inactive Products",
+    "stats": "Stats"
   },
   "products": {
     "title": "Products",
@@ -135,7 +136,14 @@
     "failedToLoad": "Failed to load trends data",
     "noResults": "No results found",
     "noResultsDescription": "Try adjusting your search or filters.",
-    "noTrendData": "No trend data available for this period."
+    "noTrendData": "No trend data available for this period.",
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedError": "An unexpected error occurred.",
+    "tryAgain": "Try again",
+    "productLoadError": "An error occurred while loading this product.",
+    "resourceLoadError": "An error occurred while loading this resource.",
+    "failedToLoadActivity": "Failed to load activity",
+    "networkError": "Network error"
   },
   "operationPanel": {
     "actions": "Actions",
@@ -223,7 +231,10 @@
     "items": "items",
     "links": "Links",
     "fields": "Fields",
-    "resources": "Resources"
+    "resources": "Resources",
+    "id": "ID",
+    "detail": "Detail",
+    "selectPlaceholder": "Select {name}..."
   },
   "commandPalette": {
     "placeholder": "Type a command or search...",

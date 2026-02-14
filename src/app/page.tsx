@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAllProducts, getAllProductsForDisplay } from "@/lib/db/products";
+import { getAllProducts } from "@/lib/db/products";
 import { getPreference } from "@/lib/db/preferences";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { CachedAdminApiClient } from "@/lib/api-client/cached-client";
@@ -94,7 +94,7 @@ async function ProductStatsGrid({ products, layout }: { products: Product[]; lay
       </div>
 
       {layout === "list" ? (
-        <ProductListView productStats={productStats} tn={tn} />
+        <ProductListView productStats={productStats} tn={tn} statsLabel={t("stats")} />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {productStats.map(({ product, stats, error }) => {
@@ -157,16 +157,17 @@ function ProductStatsSkeleton({ count }: { count: number }) {
   );
 }
 
-function ProductListView({ productStats, tn }: {
+function ProductListView({ productStats, tn, statsLabel }: {
   productStats: ProductStats[];
   tn: (key: string) => string;
+  statsLabel: string;
 }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>{tn("products")}</TableHead>
-          <TableHead className="text-right">Stats</TableHead>
+          <TableHead className="text-right">{statsLabel}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -193,19 +194,19 @@ function ProductListView({ productStats, tn }: {
   );
 }
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard");
+  return { title: t("title") };
+}
 
 export default async function DashboardPage() {
-  const displayProducts = getAllProductsForDisplay();
   const products = getAllProducts();
   const dashboardLayout = getPreference("dashboardLayout");
   const t = await getTranslations("dashboard");
   const tn = await getTranslations("nav");
   const tc = await getTranslations("common");
 
-  if (displayProducts.length === 0) {
+  if (products.length === 0) {
     return (
       <Shell breadcrumbs={[{ label: tn("dashboard") }]}>
         <EmptyState
@@ -222,7 +223,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const activeCount = displayProducts.filter((p) => p.status === "active").length;
+  const activeCount = products.filter((p) => p.status === "active").length;
 
   return (
     <Shell breadcrumbs={[{ label: tn("dashboard") }]}>
@@ -231,13 +232,13 @@ export default async function DashboardPage() {
           <ProductStatsGrid products={products} layout={dashboardLayout} />
         </Suspense>
 
-        {displayProducts.filter((p) => p.status === "inactive").length > 0 && (
+        {products.filter((p) => p.status === "inactive").length > 0 && (
           <div>
             <h2 className="mb-3 text-sm font-medium text-muted-foreground">
               {t("inactiveProducts")}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {displayProducts
+              {products
                 .filter((p) => p.status === "inactive")
                 .map((product) => (
                   <Link key={product.id} href={`/p/${product.id}`} className="block">
