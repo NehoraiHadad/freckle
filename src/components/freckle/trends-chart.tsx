@@ -17,12 +17,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBanner } from "@/components/freckle/error-banner";
-import type { TrendsResponse } from "@/types/admin-api";
+import { extractItems } from "@/lib/openapi/data-normalizer";
+import { detectFields } from "@/lib/openapi/field-detector";
+import type { DetectedFields } from "@/lib/openapi/field-detector";
 
 interface TrendsChartProps {
   productSlug: string;
   initialPeriod?: "24h" | "7d" | "30d" | "90d";
-  initialData?: TrendsResponse;
+  /** Pre-classified items with detected fields (from server) */
+  initialItems?: Record<string, unknown>[];
+  initialFields?: DetectedFields;
+  /** Legacy: raw TrendsResponse data */
+  initialData?: { period?: string; points?: Array<Record<string, unknown>> };
   endpointPath?: string;
   className?: string;
 }
@@ -41,6 +47,8 @@ const LINE_COLORS = [
 export function TrendsChart({
   productSlug,
   initialPeriod = "7d",
+  initialItems,
+  initialFields,
   initialData,
   endpointPath = "/stats/trends",
   className,
@@ -48,11 +56,13 @@ export function TrendsChart({
   const t = useTranslations("trends");
   const te = useTranslations("errors");
   const [period, setPeriod] = useState<(typeof PERIODS)[number]>(initialPeriod);
-  const [data, setData] = useState<TrendsResponse | null>(initialData ?? null);
-  const [loading, setLoading] = useState(!initialData);
-  const [error, setError] = useState<{ code: string; message: string } | null>(
-    null
-  );
+
+  // Compute initial chart state from either new or legacy props
+  const computedInitial = computeInitialState(initialItems, initialFields, initialData);
+  const [chartItems, setChartItems] = useState<Record<string, unknown>[] | null>(computedInitial.items);
+  const [fields, setFields] = useState<DetectedFields | null>(computedInitial.fields);
+  const [loading, setLoading] = useState(!computedInitial.items);
+  const [error, setError] = useState<{ code: string; message: string } | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -65,7 +75,15 @@ export function TrendsChart({
       if (!json.success) {
         setError(json.error || { code: "UNKNOWN", message: te("failedToLoad") });
       } else {
-        setData(json.data);
+        const items = extractItems(json.data);
+        if (items && items.length > 0) {
+          const detected = detectFields(items);
+          setChartItems(items);
+          setFields(detected);
+        } else {
+          setChartItems([]);
+          setFields(null);
+        }
       }
     } catch {
       setError({ code: "NETWORK_ERROR", message: te("failedToLoad") });
@@ -75,7 +93,7 @@ export function TrendsChart({
   }, [productSlug, endpointPath, period, te]);
 
   // Fetch on period change, but skip the initial mount if we have server-provided data
-  const initialFetchSkipped = useRef(!!initialData);
+  const initialFetchSkipped = useRef(!!computedInitial.items);
   useEffect(() => {
     if (initialFetchSkipped.current) {
       initialFetchSkipped.current = false;
@@ -84,10 +102,8 @@ export function TrendsChart({
     fetchData();
   }, [fetchData]);
 
-  const metricKeys =
-    data && Array.isArray(data.points) && data.points.length > 0
-      ? Object.keys(data.points[0]).filter((k) => k !== "date")
-      : [];
+  const dateKey = fields?.dateField ?? "date";
+  const metricKeys = fields?.metricFields ?? [];
 
   return (
     <Card className={className}>
@@ -113,18 +129,17 @@ export function TrendsChart({
           <Skeleton className="h-[200px] w-full sm:h-[300px]" />
         ) : error ? (
           <ErrorBanner error={error} onRetry={fetchData} />
-        ) : data && Array.isArray(data.points) && data.points.length > 0 ? (
+        ) : chartItems && chartItems.length > 0 && metricKeys.length > 0 ? (
           <div role="img" aria-label={`Trends chart showing ${metricKeys.map(toTitleCase).join(", ")} over the last ${period}`}>
             <p className="sr-only">
-              Line chart displaying {metricKeys.map(toTitleCase).join(", ")} trends with {data.points.length} data points over the last {period}.
+              Line chart displaying {metricKeys.map(toTitleCase).join(", ")} trends with {chartItems.length} data points over the last {period}.
             </p>
-            {/* Shorter chart on mobile (200px), taller on sm+ (300px) */}
             <div className="h-[200px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.points}>
+                <LineChart data={chartItems}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis
-                    dataKey="date"
+                    dataKey={dateKey}
                     tick={{ fontSize: 12 }}
                     className="text-muted-foreground"
                   />
@@ -166,4 +181,29 @@ export function TrendsChart({
       </CardContent>
     </Card>
   );
+}
+
+/** Compute initial state from either new (classified) or legacy (TrendsResponse) props */
+function computeInitialState(
+  initialItems?: Record<string, unknown>[],
+  initialFields?: DetectedFields,
+  initialData?: { period?: string; points?: Array<Record<string, unknown>> },
+): { items: Record<string, unknown>[] | null; fields: DetectedFields | null } {
+  // New props take priority
+  if (initialItems && initialItems.length > 0) {
+    return {
+      items: initialItems,
+      fields: initialFields ?? detectFields(initialItems),
+    };
+  }
+
+  // Legacy: extract from TrendsResponse shape
+  if (initialData) {
+    const items = extractItems(initialData);
+    if (items && items.length > 0) {
+      return { items, fields: detectFields(items) };
+    }
+  }
+
+  return { items: null, fields: null };
 }

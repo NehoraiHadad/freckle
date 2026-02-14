@@ -3,8 +3,6 @@
 /** Fields hidden from table columns and detail views */
 export const HIDDEN_FIELDS = new Set([
   "id", "metadata", "stats", "replies", "pages",
-  "characterTemplates", "adHocCharacters", "characterIds",
-  "userId",
 ])
 
 /** Fields rendered as Badge components */

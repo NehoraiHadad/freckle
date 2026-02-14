@@ -7,6 +7,8 @@ import { StatsGrid } from "@/components/freckle/stats-grid";
 import { ActivityFeed } from "@/components/freckle/activity-feed";
 import { HealthBadge } from "@/components/freckle/health-badge";
 import { TrendsChartWrapper } from "@/components/freckle/trends-chart-wrapper";
+import { DashboardWidget } from "@/components/freckle/dashboard-widget";
+import { EntityCountCards } from "@/components/freckle/entity-count-cards";
 import { ErrorBanner } from "@/components/freckle/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +18,7 @@ import { getProductResources } from "@/lib/db/api-resources";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { CachedAdminApiClient } from "@/lib/api-client/cached-client";
 import { classifyError } from "@/lib/api-client/errors";
-import { discoverDashboardEndpoints } from "@/lib/openapi/dashboard-endpoints";
+import { discoverAllEndpoints, discoverDashboardEndpoints } from "@/lib/openapi/dashboard-endpoints";
 import { getResourceIcon } from "@/lib/resource-icons";
 import type { StatsResponse } from "@/types/admin-api";
 import type { ApiResource } from "@/types/openapi";
@@ -30,6 +32,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = getProduct(slug);
   return { title: product?.name ?? "Product" };
 }
+
+// ──────────────────────────────────
+// Stats Section (server component with Suspense)
+// ──────────────────────────────────
 
 async function StatsSection({ productId, statsPath }: { productId: string; statsPath: string }) {
   const rawClient = getClientManager().getClient(productId);
@@ -61,6 +67,10 @@ function StatsSkeleton() {
     </div>
   );
 }
+
+// ──────────────────────────────────
+// Resource Quick Links (kept at bottom)
+// ──────────────────────────────────
 
 function ResourceQuickLinks({
   slug,
@@ -113,6 +123,10 @@ function ResourceQuickLinks({
   );
 }
 
+// ──────────────────────────────────
+// Main Page
+// ──────────────────────────────────
+
 export default async function ProductDashboardPage({ params }: Props) {
   const { slug } = await params;
   const product = getProduct(slug);
@@ -125,7 +139,16 @@ export default async function ProductDashboardPage({ params }: Props) {
   const tGeneric = await getTranslations("generic");
 
   const resourceTree = getProductResources(slug);
-  const endpoints = discoverDashboardEndpoints(resourceTree);
+
+  // Use new discovery for endpoint classification
+  const allEndpoints = discoverAllEndpoints(resourceTree);
+
+  // Split into dashboard-type (priority < 10) and entity-type (priority >= 10)
+  const dashboardEndpoints = allEndpoints.filter((ep) => !ep.isEntityCollection).slice(0, 8);
+  const entityEndpoints = allEndpoints.filter((ep) => ep.isEntityCollection);
+
+  // Also use legacy discovery for backward-compatible rendering
+  const legacyEndpoints = discoverDashboardEndpoints(resourceTree);
 
   return (
     <ProductShell
@@ -149,28 +172,49 @@ export default async function ProductDashboardPage({ params }: Props) {
           </div>
         </div>
 
-        {endpoints.statsPath && (
+        {/* Stats section — use legacy statsPath for direct stats, or first summary endpoint */}
+        {legacyEndpoints.statsPath && (
           <Suspense fallback={<StatsSkeleton />}>
-            <StatsSection productId={product.id} statsPath={endpoints.statsPath} />
+            <StatsSection productId={product.id} statsPath={legacyEndpoints.statsPath} />
           </Suspense>
         )}
 
+        {/* Dashboard widgets: trends, activity, and other discovered endpoints */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-          {endpoints.trendsPath && (
+          {legacyEndpoints.trendsPath && (
             <Suspense fallback={<Skeleton className="h-[300px] w-full rounded-lg" />}>
-              <TrendsChartWrapper productSlug={product.id} trendsPath={endpoints.trendsPath} />
+              <TrendsChartWrapper productSlug={product.id} trendsPath={legacyEndpoints.trendsPath} />
             </Suspense>
           )}
-          {endpoints.activityPath && (
+          {legacyEndpoints.activityPath && (
             <ActivityFeed
               productSlug={product.id}
-              endpointPath={endpoints.activityPath}
+              endpointPath={legacyEndpoints.activityPath}
               compact
               limit={8}
               showLoadMore={false}
             />
           )}
+          {/* Extra dashboard-type endpoints that weren't caught by legacy patterns */}
+          {dashboardEndpoints
+            .filter((ep) =>
+              ep.path !== legacyEndpoints.statsPath &&
+              ep.path !== legacyEndpoints.trendsPath &&
+              ep.path !== legacyEndpoints.activityPath
+            )
+            .map((ep) => (
+              <Suspense key={ep.resourceKey} fallback={<Skeleton className="h-[200px] w-full rounded-lg" />}>
+                <DashboardWidget productSlug={product.id} endpoint={ep} />
+              </Suspense>
+            ))}
         </div>
+
+        {/* Entity count cards */}
+        {entityEndpoints.length > 0 && (
+          <Suspense fallback={<Skeleton className="h-[80px] w-full rounded-lg" />}>
+            <EntityCountCards productSlug={product.id} endpoints={entityEndpoints} />
+          </Suspense>
+        )}
 
         <ResourceQuickLinks
           slug={slug}

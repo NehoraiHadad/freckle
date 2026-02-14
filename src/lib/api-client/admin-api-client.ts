@@ -67,12 +67,12 @@ export class AdminApiClient {
     const apiPath = capabilityName.replace(/\./g, "/")
     return {
       list: (params?: PaginationParams & Record<string, string | number | boolean | undefined | null>) =>
-        this.getList<Record<string, unknown> & { id: string }>(
+        this.getList<Record<string, unknown>>(
           `/${apiPath}`,
           params ? { ...params } : undefined,
         ),
       get: (id: string) =>
-        this.get<Record<string, unknown> & { id: string }>(
+        this.get<Record<string, unknown>>(
           `/${apiPath}/${encodeURIComponent(id)}`,
         ),
       update: (id: string, data: Record<string, unknown>) =>

@@ -92,6 +92,9 @@ function SubResourceList({ items }: { items: Array<Record<string, unknown>> }) {
 
   const columns = Object.keys(firstItem).filter(k => !HIDDEN_FIELDS.has(k)).slice(0, 6)
 
+  // Detect ID field for row keys
+  const idField = Object.keys(firstItem).find(k => /^id$|_id$|^uuid$/i.test(k))
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -108,7 +111,7 @@ function SubResourceList({ items }: { items: Array<Record<string, unknown>> }) {
             </thead>
             <tbody>
               {items.map((item, i) => (
-                <tr key={item.id ? String(item.id) : i} className="border-b border-border/50 last:border-0">
+                <tr key={idField && item[idField] ? String(item[idField]) : i} className="border-b border-border/50 last:border-0">
                   {columns.map(col => (
                     <td key={col} className="py-2 pe-4">
                       {renderValue(col, item[col], labels)}

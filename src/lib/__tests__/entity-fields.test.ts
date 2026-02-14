@@ -64,7 +64,14 @@ describe("HIDDEN_FIELDS", () => {
   it("contains expected fields", () => {
     expect(HIDDEN_FIELDS.has("id")).toBe(true);
     expect(HIDDEN_FIELDS.has("metadata")).toBe(true);
-    expect(HIDDEN_FIELDS.has("userId")).toBe(true);
+    expect(HIDDEN_FIELDS.has("stats")).toBe(true);
+    expect(HIDDEN_FIELDS.has("replies")).toBe(true);
+    expect(HIDDEN_FIELDS.has("pages")).toBe(true);
+  });
+
+  it("does not contain product-specific fields", () => {
+    expect(HIDDEN_FIELDS.has("userId")).toBe(false);
+    expect(HIDDEN_FIELDS.has("characterTemplates")).toBe(false);
   });
 });
 

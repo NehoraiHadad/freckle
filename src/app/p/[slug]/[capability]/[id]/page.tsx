@@ -13,13 +13,52 @@ import { Card, CardContent } from "@/components/ui/card"
 import { getResourceOperations, getProductResources } from "@/lib/db/api-resources"
 import { collectResourceKeys } from "@/lib/object-utils"
 import { SubResourceTab } from "@/components/freckle/sub-resource-tab"
-import { toTitleCase, formatDate } from "@/lib/format"
+import { toTitleCase } from "@/lib/format"
 import { HIDDEN_FIELDS } from "@/lib/entity-fields"
 import { findResource } from "@/lib/openapi/find-resource"
 import { renderValue } from "@/components/freckle/value-renderer"
+import { detectFields } from "@/lib/openapi/field-detector"
 
 interface EntityDetailPageProps {
   params: Promise<{ slug: string; capability: string; id: string }>
+}
+
+/**
+ * Detect a display title from entity data using schema-driven heuristics.
+ * Priority: x-display-name fields, name/title/email patterns, first short string, fallback.
+ */
+function detectEntityTitle(entity: Record<string, unknown>, capability: string, id: string): string {
+  // Check common title-like fields
+  const titleCandidates = ["title", "name", "displayName", "display_name", "label", "email", "subject", "username"]
+  for (const key of titleCandidates) {
+    const val = entity[key]
+    if (typeof val === "string" && val.length > 0 && val.length < 200) {
+      return val
+    }
+  }
+
+  // Try message field (truncated)
+  if (typeof entity.message === "string" && entity.message.length > 0) {
+    return entity.message.slice(0, 50) + (entity.message.length > 50 ? "..." : "")
+  }
+
+  // Fallback: first short string field
+  for (const [key, val] of Object.entries(entity)) {
+    if (HIDDEN_FIELDS.has(key)) continue
+    if (typeof val === "string" && val.length > 0 && val.length < 100) {
+      return val
+    }
+  }
+
+  return `${toTitleCase(capability)} ${id.slice(0, 8)}`
+}
+
+/**
+ * Detect the ID field from entity data.
+ */
+function detectIdField(entity: Record<string, unknown>): string {
+  const fields = detectFields([entity])
+  return fields.idField ?? "id"
 }
 
 export async function generateMetadata({ params }: EntityDetailPageProps): Promise<Metadata> {
@@ -28,9 +67,7 @@ export async function generateMetadata({ params }: EntityDetailPageProps): Promi
   try {
     const client = getClientManager().getClient(slug)
     const entity = await client.entity(capability).get(id)
-    const title = String(
-      entity.title || entity.name || entity.email || `${toTitleCase(capability)} ${id.slice(0, 8)}`
-    )
+    const title = detectEntityTitle(entity, capability, id)
     return { title }
   } catch {
     return { title: `${toTitleCase(capability)} - ${product?.name ?? "Product"}` }
@@ -53,15 +90,23 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-function InfoTab({ entity, labels }: { entity: Record<string, unknown>; labels: { yes: string; no: string; items: string; fields: string } }) {
-  const entries = Object.entries(entity).filter(([key]) => !HIDDEN_FIELDS.has(key))
+function InfoTab({ entity, idField, labels }: { entity: Record<string, unknown>; idField: string; labels: { yes: string; no: string; items: string; fields: string } }) {
+  // Fields to show: exclude hidden, exclude those that will become their own tabs
+  const entries = Object.entries(entity).filter(([key, value]) => {
+    if (HIDDEN_FIELDS.has(key)) return false
+    // Exclude object/array fields — they get their own tabs
+    if (typeof value === "object" && value !== null) return false
+    return true
+  })
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <InfoRow label="ID">
-          <code className="text-xs">{String(entity.id)}</code>
-        </InfoRow>
+        {entity[idField] !== undefined && (
+          <InfoRow label="ID">
+            <code className="text-xs">{String(entity[idField])}</code>
+          </InfoRow>
+        )}
         {entries.map(([key, value]) => (
           <InfoRow key={key} label={toTitleCase(key)}>
             {renderValue(key, value, labels)}
@@ -72,12 +117,12 @@ function InfoTab({ entity, labels }: { entity: Record<string, unknown>; labels: 
   )
 }
 
-function MetadataTab({ data, labels }: { data: Record<string, unknown>; labels: { yes: string; no: string; items: string; fields: string; noMetadata: string } }) {
+function ObjectTab({ data, labels }: { data: Record<string, unknown>; labels: { yes: string; no: string; items: string; fields: string; noData: string } }) {
   const entries = Object.entries(data)
   if (entries.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        {labels.noMetadata}
+        {labels.noData}
       </p>
     )
   }
@@ -95,35 +140,44 @@ function MetadataTab({ data, labels }: { data: Record<string, unknown>; labels: 
   )
 }
 
-function StatsTab({ stats, labels }: { stats: Record<string, unknown>; labels: { yes: string; no: string; noStats: string } }) {
-  const entries = Object.entries(stats)
-  if (entries.length === 0) {
+function ArrayTab({ items, labels }: { items: Array<Record<string, unknown>>; labels: { yes: string; no: string; items: string; fields: string; noData: string } }) {
+  if (items.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        {labels.noStats}
+        {labels.noData}
       </p>
     )
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {entries.map(([key, value]) => (
-        <Card key={key}>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">{toTitleCase(key)}</p>
-            <p className="mt-1 text-2xl font-bold">
-              {typeof value === "number"
-                ? value.toLocaleString()
-                : typeof value === "string" && /^\d+(\.\d+)?$/.test(value)
-                  ? Number(value).toLocaleString()
-                  : typeof value === "boolean"
-                    ? (value ? labels.yes : labels.no)
-                    : String(value ?? "—")}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    <Card>
+      <CardContent className="pt-6 space-y-4">
+        {items.map((item, i) => {
+          // Each array item rendered as a block of key-value pairs
+          const entries = Object.entries(item).filter(([key]) => !HIDDEN_FIELDS.has(key))
+          return (
+            <div key={item.id ? String(item.id) : i} className="border-b border-border/50 pb-4 last:border-0 last:pb-0">
+              {entries.map(([key, value]) => {
+                if (typeof value === "object" && value !== null) {
+                  return (
+                    <div key={key} className="mb-1">
+                      <span className="text-xs text-muted-foreground">{toTitleCase(key)}: </span>
+                      <span className="text-sm">{renderValue(key, value, labels)}</span>
+                    </div>
+                  )
+                }
+                return (
+                  <div key={key} className="mb-1">
+                    <span className="text-xs text-muted-foreground">{toTitleCase(key)}: </span>
+                    <span className="text-sm">{renderValue(key, value, labels)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -141,6 +195,7 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
     fields: t("fields"),
     noMetadata: t("noMetadata"),
     noStats: t("noStats"),
+    noData: t("noData"),
   }
 
   // Verify this capability/resource exists in the OpenAPI resource tree
@@ -154,65 +209,56 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
     const client = getClientManager().getClient(slug)
     const entity = await client.entity(capability).get(id)
 
-    // Determine title from entity data
-    const title = String(
-      entity.title || entity.name || entity.email || entity.message?.toString().slice(0, 50) || `${toTitleCase(capability)} ${id.slice(0, 8)}`
-    )
+    // Schema-driven title detection
+    const title = detectEntityTitle(entity, capability, id)
+    const idField = detectIdField(entity)
     const subtitle = entity.type ? String(entity.type) : undefined
 
-    // Build tabs
+    // Build tabs — Info tab always first
     const tabs: TabDef[] = [
-      { id: "info", label: t("info"), content: <InfoTab entity={entity} labels={labels} /> },
+      { id: "info", label: t("info"), content: <InfoTab entity={entity} idField={idField} labels={labels} /> },
     ]
 
-    if (entity.stats && typeof entity.stats === "object") {
-      tabs.push({
-        id: "stats",
-        label: t("stats"),
-        content: <StatsTab stats={entity.stats as Record<string, unknown>} labels={labels} />,
-      })
-    }
+    // Auto-generate tabs for all object-typed and array-typed fields
+    const infoShownFields = new Set([...HIDDEN_FIELDS])
+    for (const [key, value] of Object.entries(entity)) {
+      if (HIDDEN_FIELDS.has(key)) continue
+      if (typeof value !== "object" || value === null) continue
 
-    if (entity.metadata && typeof entity.metadata === "object") {
-      tabs.push({
-        id: "metadata",
-        label: t("metadata"),
-        content: <MetadataTab data={entity.metadata as Record<string, unknown>} labels={labels} />,
-      })
+      if (Array.isArray(value)) {
+        // Array field → list tab
+        if (value.length > 0) {
+          const arrayItems = value.filter(
+            (v): v is Record<string, unknown> => typeof v === "object" && v !== null,
+          )
+          if (arrayItems.length > 0) {
+            tabs.push({
+              id: key,
+              label: toTitleCase(key),
+              badge: arrayItems.length,
+              content: <ArrayTab items={arrayItems} labels={labels} />,
+            })
+            infoShownFields.add(key)
+          }
+        }
+      } else {
+        // Object field → key-value tab
+        const objData = value as Record<string, unknown>
+        if (Object.keys(objData).length > 0) {
+          tabs.push({
+            id: key,
+            label: toTitleCase(key),
+            content: <ObjectTab data={objData} labels={labels} />,
+          })
+          infoShownFields.add(key)
+        }
+      }
     }
-
-    // If there are replies (like feedback), show them
-    if (Array.isArray(entity.replies) && entity.replies.length > 0) {
-      const repliesCount = entity.replies.length
-      tabs.push({
-        id: "replies",
-        label: t("replies"),
-        badge: repliesCount,
-        content: (
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              {(entity.replies as Array<Record<string, unknown>>).map((reply, i) => (
-                <div key={i} className="border-b border-border/50 pb-4 last:border-0 last:pb-0">
-                  <p className="text-sm">{String(reply.message)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {reply.respondedBy ? `${reply.respondedBy} · ` : ""}
-                    {reply.createdAt ? formatDate(String(reply.createdAt)) : ""}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ),
-      })
-    }
-
-    // Fetch resource tree for tabs and actions
-    const currentResource = findResource(allResources, capability)
 
     // Add sub-resource tabs from OpenAPI spec
+    const currentResource = findResource(allResources, capability)
     if (currentResource) {
       for (const child of currentResource.children) {
-        // Only add tabs for sub-resources that have GET operations
         const getOp = child.operations.find(op => op.httpMethod === "GET" && (op.operationType === "sub-list" || op.operationType === "sub-detail"))
         if (!getOp) continue
 

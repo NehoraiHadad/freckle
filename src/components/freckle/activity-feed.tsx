@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBanner } from "@/components/freckle/error-banner";
-import type { ActivityEvent } from "@/types/admin-api";
+import { extractItems } from "@/lib/openapi/data-normalizer";
+import { detectFields, type DetectedFields } from "@/lib/openapi/field-detector";
 
 interface ActivityFeedProps {
   productSlug: string;
@@ -32,6 +33,8 @@ interface ActivityFeedProps {
   showLoadMore?: boolean;
   compact?: boolean;
   className?: string;
+  /** Pre-detected field mapping from server-side classification */
+  fieldMapping?: DetectedFields;
 }
 
 interface EventIconConfig {
@@ -62,6 +65,7 @@ function getEventIcon(type: string): EventIconConfig {
 function timeAgo(timestamp: string, tTime: (key: string, params?: Record<string, string | number | Date>) => string): string {
   const now = Date.now();
   const then = new Date(timestamp).getTime();
+  if (isNaN(then)) return timestamp;
   const diffSeconds = Math.floor((now - then) / 1000);
 
   if (diffSeconds < 60) return tTime("justNow");
@@ -75,6 +79,18 @@ function timeAgo(timestamp: string, tTime: (key: string, params?: Record<string,
   return tTime("monthsAgo", { count: months });
 }
 
+/** Extract the actor display name from various shapes */
+function getActorName(actorValue: unknown): string | null {
+  if (!actorValue) return null;
+  if (typeof actorValue === "string") return actorValue;
+  if (typeof actorValue === "object" && actorValue !== null) {
+    const obj = actorValue as Record<string, unknown>;
+    const name = obj.name ?? obj.displayName ?? obj.username ?? obj.email;
+    if (typeof name === "string") return name;
+  }
+  return null;
+}
+
 export function ActivityFeed({
   productSlug,
   endpointPath = "/analytics/activity",
@@ -84,12 +100,14 @@ export function ActivityFeed({
   showLoadMore = true,
   compact = false,
   className,
+  fieldMapping,
 }: ActivityFeedProps) {
   const t = useTranslations("activity");
   const tTime = useTranslations("time");
   const tErrors = useTranslations("errors");
   const tc = useTranslations("common");
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
+  const [fields, setFields] = useState<DetectedFields | null>(fieldMapping ?? null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -109,15 +127,25 @@ export function ActivityFeed({
         );
         const json = await res.json();
         if (json.success) {
-          const newEvents: ActivityEvent[] = json.data;
+          const rawData = json.data;
+          const items = extractItems(rawData) ?? (Array.isArray(rawData) ? rawData : []);
+
+          // Auto-detect fields on first successful load
+          if (!fields && items.length > 0) {
+            setFields(detectFields(items as Record<string, unknown>[]));
+          }
+
           if (append) {
             setEvents((prev) => {
-              const existingIds = new Set(prev.map((e) => e.id));
-              const unique = newEvents.filter((e) => !existingIds.has(e.id));
+              const idField = fields?.idField ?? "id";
+              const existingIds = new Set(prev.map((e) => String(e[idField] ?? "")));
+              const unique = (items as Record<string, unknown>[]).filter(
+                (e) => !existingIds.has(String(e[idField] ?? ""))
+              );
               return [...prev, ...unique];
             });
           } else {
-            setEvents(newEvents);
+            setEvents(items as Record<string, unknown>[]);
           }
           setHasMore(json.meta?.hasMore ?? false);
           setError(null);
@@ -134,12 +162,13 @@ export function ActivityFeed({
         setLoadingMore(false);
       }
     },
-    [productSlug, endpointPath, limit, tErrors]
+    [productSlug, endpointPath, limit, tErrors, fields]
   );
 
   useEffect(() => {
     fetchEvents(1);
-  }, [fetchEvents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productSlug, endpointPath, limit]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -177,6 +206,13 @@ export function ActivityFeed({
     fetchEvents(nextPage, true);
   };
 
+  // Field accessors using detected or default field names
+  const idKey = fields?.idField ?? "id";
+  const dateKey = fields?.dateField ?? "timestamp";
+  const descKey = fields?.descriptionField ?? "description";
+  const typeKey = fields?.typeField ?? "type";
+  const actorKey = fields?.actorField ?? "actor";
+
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
@@ -208,11 +244,17 @@ export function ActivityFeed({
         ) : (
           <div role="feed" aria-label="Activity feed" className="space-y-0">
             {events.map((event, i) => {
-              const { icon: Icon, color } = getEventIcon(event.type);
+              const eventType = String(event[typeKey] ?? "");
+              const { icon: Icon, color } = getEventIcon(eventType);
+              const description = String(event[descKey] ?? "");
+              const timestamp = event[dateKey] ? String(event[dateKey]) : null;
+              const actorName = getActorName(event[actorKey]);
+              const eventId = event[idKey] ? String(event[idKey]) : String(i);
+
               return (
                 <article
-                  key={event.id}
-                  aria-label={event.description}
+                  key={eventId}
+                  aria-label={description}
                   className={cn(
                     "flex items-start gap-3 py-2",
                     i < events.length - 1 && "border-b border-border/50"
@@ -229,28 +271,32 @@ export function ActivityFeed({
                     <Icon className={compact ? "size-3" : "size-3 sm:size-3.5"} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "leading-snug",
-                        compact ? "text-xs" : "text-xs sm:text-sm"
-                      )}
-                    >
-                      {event.description}
-                    </p>
-                    {!compact && event.actor?.name && (
+                    {description && (
+                      <p
+                        className={cn(
+                          "leading-snug",
+                          compact ? "text-xs" : "text-xs sm:text-sm"
+                        )}
+                      >
+                        {description}
+                      </p>
+                    )}
+                    {!compact && actorName && (
                       <p className="text-xs text-muted-foreground">
-                        by {event.actor.name}
+                        by {actorName}
                       </p>
                     )}
                   </div>
-                  <span
-                    className={cn(
-                      "shrink-0 text-muted-foreground",
-                      compact ? "text-[10px]" : "text-xs"
-                    )}
-                  >
-                    <time dateTime={event.timestamp}>{timeAgo(event.timestamp, tTime)}</time>
-                  </span>
+                  {timestamp && (
+                    <span
+                      className={cn(
+                        "shrink-0 text-muted-foreground",
+                        compact ? "text-[10px]" : "text-xs"
+                      )}
+                    >
+                      <time dateTime={timestamp}>{timeAgo(timestamp, tTime)}</time>
+                    </span>
+                  )}
                 </article>
               );
             })}

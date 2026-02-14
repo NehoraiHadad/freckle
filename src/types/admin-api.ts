@@ -39,6 +39,7 @@ export interface HealthResponse {
   version: string;
   uptime: number;
   timestamp: string;
+  [key: string]: unknown;
 }
 
 export interface MetaResponse {
@@ -107,6 +108,6 @@ export interface ActionResponse {
 // ============================================
 
 export interface AdminEntityItem {
-  id: string;
+  id?: string;
   [key: string]: unknown;
 }

@@ -90,7 +90,7 @@ function getCleanParams(
   return clean;
 }
 
-export function DataTable<T extends { id: string }>({
+export function DataTable<T extends Record<string, unknown>>({
   data,
   meta,
   columns,
@@ -217,13 +217,14 @@ export function DataTable<T extends { id: string }>({
         <div className={cn(isPending && "opacity-60 pointer-events-none transition-opacity")}>
           {/* Mobile card layout */}
           <div className="space-y-3 md:hidden">
-            {data.map((item) => {
+            {data.map((item, rowIdx) => {
               const mobileColumns = columns.some((c) => c.mobileVisible)
                 ? columns.filter((c) => c.mobileVisible)
                 : columns.slice(0, 3);
+              const rowKey = (item.id ?? item.uuid ?? item._id ?? rowIdx) as string | number;
               return (
                 <Card
-                  key={item.id}
+                  key={rowKey}
                   className={cn("hover:bg-muted/50 transition-colors", onRowClick && "cursor-pointer")}
                   onClick={() => onRowClick?.(item)}
                   {...(onRowClick ? {
@@ -301,9 +302,9 @@ export function DataTable<T extends { id: string }>({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((item) => (
+                {data.map((item, rowIdx) => (
                   <TableRow
-                    key={item.id}
+                    key={(item.id ?? item.uuid ?? item._id ?? rowIdx) as string | number}
                     className={cn(onRowClick && "cursor-pointer")}
                     onClick={() => onRowClick?.(item)}
                     {...(onRowClick ? {

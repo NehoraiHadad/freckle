@@ -151,7 +151,7 @@ async function EntityDataSection({
 
   // Table view: response is an array
   const data = Array.isArray(rawData)
-    ? rawData as Array<Record<string, unknown> & { id: string }>
+    ? rawData as Array<Record<string, unknown>>
     : []
 
   return (

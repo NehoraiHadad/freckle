@@ -16,7 +16,7 @@ import { getProductResources } from "@/lib/db/api-resources";
 import { getPreference } from "@/lib/db/preferences";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { CachedAdminApiClient } from "@/lib/api-client/cached-client";
-import { discoverDashboardEndpoints } from "@/lib/openapi/dashboard-endpoints";
+import { discoverAllEndpoints } from "@/lib/openapi/dashboard-endpoints";
 import { toTitleCase } from "@/lib/format";
 import type { StatsResponse } from "@/types/admin-api";
 import type { Product } from "@/types/product";
@@ -55,17 +55,22 @@ async function fetchAllProductStats(products: Product[]): Promise<ProductStats[]
 
   const results = await Promise.allSettled(
     activeProducts.map(async (product) => {
-      // Discover stats endpoint from resource tree
+      // Use new discovery to find stats-like endpoint
       const resources = getProductResources(product.id);
-      const endpoints = discoverDashboardEndpoints(resources);
+      const endpoints = discoverAllEndpoints(resources);
 
-      if (!endpoints.statsPath) {
+      // Find first summary-type endpoint (priority 1 = stats)
+      const statsEndpoint = endpoints.find(
+        (ep) => !ep.isEntityCollection && ep.priority <= 2,
+      );
+
+      if (!statsEndpoint) {
         return { product, stats: null, error: null };
       }
 
       const rawClient = getClientManager().getClient(product.id);
       const client = new CachedAdminApiClient(rawClient, product.id);
-      const stats = (await client.fetchCached("stats", endpoints.statsPath)) as StatsResponse;
+      const stats = (await client.fetchCached("stats", statsEndpoint.path)) as StatsResponse;
       return { product, stats, error: null };
     }),
   );

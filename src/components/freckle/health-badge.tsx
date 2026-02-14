@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import type { HealthStatus } from "@/types/admin-api";
 
 interface HealthBadgeProps {
-  status: HealthStatus;
+  status: HealthStatus | string;
   showLabel?: boolean;
   size?: "sm" | "md";
 }
@@ -21,14 +21,20 @@ const iconConfig: Record<
   unknown: { color: "text-gray-400", icon: HelpCircle },
 };
 
+const KNOWN_STATUSES = new Set<string>(["healthy", "degraded", "unhealthy", "unknown"]);
+
 export function HealthBadge({
   status,
   showLabel = true,
   size = "md",
 }: HealthBadgeProps) {
   const t = useTranslations("health");
-  const { color, icon: Icon } = iconConfig[status];
-  const label = t(status);
+
+  // Handle unrecognized status values gracefully
+  const isKnown = KNOWN_STATUSES.has(status);
+  const normalizedStatus: HealthStatus = isKnown ? (status as HealthStatus) : "unknown";
+  const { color, icon: Icon } = iconConfig[normalizedStatus];
+  const label = isKnown ? t(normalizedStatus) : status;
   const iconSize = size === "sm" ? "size-3" : "size-4";
 
   return (
