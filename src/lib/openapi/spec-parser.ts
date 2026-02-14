@@ -7,11 +7,12 @@ import type {
   JsonSchema,
 } from "@/types/openapi";
 import { resolveSchema } from "./schema-resolver";
+import { toTitleCase } from "@/lib/format";
 
-interface RawOpenApiSpec {
+export interface RawOpenApiSpec {
   openapi: string;
   info: { title: string; version: string };
-  paths: Record<string, Record<string, RawOperation>>;
+  paths: Record<string, Record<string, RawOperation | unknown>>;
   components?: {
     schemas?: Record<string, JsonSchema>;
   };
@@ -25,7 +26,7 @@ interface RawOperation {
   requestBody?: {
     content?: Record<string, { schema?: JsonSchema }>;
   };
-  responses?: Record<string, { content?: Record<string, { schema?: JsonSchema }> }>;
+  responses?: Record<string, { description?: string; content?: Record<string, { schema?: JsonSchema }> }>;
 }
 
 const HTTP_METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -258,7 +259,7 @@ function buildResourceTree(
 
     resourceMap.set(key, {
       key,
-      name: toDisplayName(segment),
+      name: toTitleCase(segment),
       parentKey,
       pathSegment: segment,
       requiresParentId,
@@ -343,9 +344,3 @@ function getPathBeforeLastResourceSegment(pathTemplate: string, key: string): st
   return pathTemplate.slice(0, idx);
 }
 
-/** Convert a path segment to a display name */
-function toDisplayName(segment: string): string {
-  return segment
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, c => c.toUpperCase());
-}

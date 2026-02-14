@@ -8,9 +8,9 @@ export function toTitleCase(s: string): string {
 }
 
 /** Format ISO date string to human-readable short format */
-export function formatDate(dateStr: string): string {
+export function formatDate(dateStr: string, locale = "en-US"): string {
   try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -23,9 +23,9 @@ export function formatDate(dateStr: string): string {
 }
 
 /** Format ISO date string to short date only (no time) */
-export function formatDateShort(dateStr: string): string {
+export function formatDateShort(dateStr: string, locale = "en-US"): string {
   try {
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",

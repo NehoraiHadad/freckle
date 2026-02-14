@@ -8,6 +8,7 @@ import {
   deleteProduct as dbDeleteProduct,
   getProduct,
 } from "@/lib/db/products";
+import { getDb } from "@/lib/db";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { appendLog } from "@/lib/db/audit-log";
 import { revalidatePath } from "next/cache";
@@ -79,23 +80,26 @@ export async function addProductAction(
   }
 
   try {
-    addProduct({
-      id: meta.product,
-      name: name || meta.displayName,
-      description: description || meta.description,
-      baseUrl,
-      apiKey,
-      iconUrl: iconUrl || undefined,
-      displayOrder,
-    });
+    const db = getDb();
+    db.transaction(() => {
+      addProduct({
+        id: meta.product,
+        name: name || meta.displayName,
+        description: description || meta.description,
+        baseUrl,
+        apiKey,
+        iconUrl: iconUrl || undefined,
+        displayOrder,
+      });
 
-    // Update with discovered metadata
-    updateProduct(meta.product, {
-      capabilities: meta.capabilities,
-      supportedActions: meta.supportedActions,
-      apiStandardVersion: meta.apiStandardVersion,
-      productVersion: meta.version,
-    });
+      // Update with discovered metadata
+      updateProduct(meta.product, {
+        capabilities: meta.capabilities,
+        supportedActions: meta.supportedActions,
+        apiStandardVersion: meta.apiStandardVersion,
+        productVersion: meta.version,
+      });
+    })();
 
     // Attempt OpenAPI spec discovery
     try {
@@ -132,6 +136,7 @@ export async function addProductAction(
     });
 
     revalidatePath("/");
+    revalidatePath("/products");
     return { success: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Failed to add product" };
@@ -203,6 +208,8 @@ export async function updateProductAction(
   });
 
   revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath(`/p/${id}`);
   return { success: true };
 }
 
@@ -227,6 +234,7 @@ export async function deleteProductAction(id: string): Promise<{ error?: string;
   });
 
   revalidatePath("/");
+  revalidatePath("/products");
   return { success: true };
 }
 

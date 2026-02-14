@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useTranslations, useLocale } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,13 +27,25 @@ export function SettingsForm({ preferences, products }: SettingsFormProps) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   return (
     <form
+      onChange={() => setIsDirty(true)}
       action={async (formData: FormData) => {
         const theme = formData.get("theme") as string;
         setTheme(theme);
         await savePreferences(formData);
+        setIsDirty(false);
         toast.success(t("settingsSaved"));
       }}
       className="space-y-6"
@@ -126,7 +139,7 @@ export function SettingsForm({ preferences, products }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      <Button type="submit" className="w-full">
+      <Button type="submit" disabled={!isDirty} className="w-full">
         {t("saveSettings")}
       </Button>
     </form>

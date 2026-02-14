@@ -1,21 +1,14 @@
 import { EncryptJWT, jwtDecrypt } from "jose";
 import { cookies } from "next/headers";
+import { getSecret } from "./secret";
 
 const COOKIE_NAME = "freckle_session";
 const EXPIRY_DAYS = 7;
 
-function getSecret(): Uint8Array {
-  const secret = process.env.FRECKLE_SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("FRECKLE_SESSION_SECRET must be at least 32 characters");
-  }
-  return new TextEncoder().encode(secret.slice(0, 32));
-}
-
 export async function createSession(): Promise<void> {
   const secret = getSecret();
   const token = await new EncryptJWT({ role: "admin" })
-    .setProtectedHeader({ alg: "dir", enc: "A128CBC-HS256" })
+    .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
     .setIssuedAt()
     .setIssuer("freckle")
     .setExpirationTime(`${EXPIRY_DAYS}d`)

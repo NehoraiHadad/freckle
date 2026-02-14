@@ -5,9 +5,10 @@ import { getAllProducts } from "@/lib/db/products";
 import { getAllPreferences } from "@/lib/db/preferences";
 import { SettingsForm } from "./settings-form";
 
-export const metadata: Metadata = {
-  title: "Settings",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("settings");
+  return { title: t("title") };
+}
 
 export default async function SettingsPage() {
   const preferences = getAllPreferences();

@@ -85,6 +85,8 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const t = useTranslations("activity");
   const tTime = useTranslations("time");
+  const tErrors = useTranslations("errors");
+  const tc = useTranslations("common");
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -119,18 +121,18 @@ export function ActivityFeed({
           setError(null);
           hasLoadedOnce.current = true;
         } else if (!hasLoadedOnce.current) {
-          setError(json.error?.message || "Failed to load activity");
+          setError(json.error?.message || tErrors("failedToLoadActivity"));
         }
       } catch {
         if (!hasLoadedOnce.current) {
-          setError("Network error");
+          setError(tErrors("networkError"));
         }
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [productSlug, limit]
+    [productSlug, limit, tErrors]
   );
 
   useEffect(() => {
@@ -139,11 +141,31 @@ export function ActivityFeed({
 
   useEffect(() => {
     if (!autoRefresh) return;
-    intervalRef.current = setInterval(() => {
-      fetchEvents(1);
-    }, refreshInterval);
+
+    const startPolling = () => {
+      intervalRef.current = setInterval(() => {
+        fetchEvents(1);
+      }, refreshInterval);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } else {
+        fetchEvents(1);
+        startPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [autoRefresh, refreshInterval, fetchEvents]);
 
@@ -170,7 +192,7 @@ export function ActivityFeed({
                 </div>
               </div>
             ))}
-            <span className="sr-only">Loading...</span>
+            <span className="sr-only">{tc("loading")}</span>
           </div>
         ) : error ? (
           <ErrorBanner

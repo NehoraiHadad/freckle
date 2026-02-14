@@ -19,9 +19,10 @@ import {
 import { getAllProducts } from "@/lib/db/products";
 import { DeleteProductButton } from "./delete-button";
 
-export const metadata: Metadata = {
-  title: "Products",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("products");
+  return { title: t("title") };
+}
 
 export default async function ProductsPage() {
   const products = getAllProducts();

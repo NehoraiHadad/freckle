@@ -1,10 +1,6 @@
 import { getDb } from "./index";
+import { safeJsonParse } from "./utils";
 import type { ApiResource, ApiOperation, JsonSchema } from "@/types/openapi";
-
-function safeJsonParse<T>(value: unknown, fallback: T): T {
-  if (typeof value !== "string") return fallback;
-  try { return JSON.parse(value) as T; } catch { return fallback; }
-}
 
 /** Delete all resources and operations for a product (before re-parsing) */
 export function clearProductResources(productId: string): void {

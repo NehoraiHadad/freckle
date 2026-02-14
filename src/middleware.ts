@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtDecrypt } from "jose";
+import { getSecret } from "@/lib/auth/secret";
 
 const COOKIE_NAME = "freckle_session";
-
-function getSecret(): Uint8Array {
-  const secret = process.env.FRECKLE_SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("FRECKLE_SESSION_SECRET must be at least 32 characters");
-  }
-  return new TextEncoder().encode(secret.slice(0, 32));
-}
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value;

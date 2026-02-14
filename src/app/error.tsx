@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export default function RootError({
   error,
@@ -11,6 +12,8 @@ export default function RootError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errors");
+
   useEffect(() => {
     console.error("Root error boundary caught:", error);
   }, [error]);
@@ -21,13 +24,13 @@ export default function RootError({
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10">
           <AlertCircle className="size-6 text-destructive" />
         </div>
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <h1 className="text-xl font-semibold">{t("somethingWentWrong")}</h1>
         <p className="text-sm text-muted-foreground">
-          {error.message || "An unexpected error occurred."}
+          {error.message || t("unexpectedError")}
         </p>
         <Button onClick={reset} variant="outline">
           <RotateCcw className="size-4" />
-          Try again
+          {t("tryAgain")}
         </Button>
       </div>
     </div>

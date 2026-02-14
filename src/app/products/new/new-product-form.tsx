@@ -192,7 +192,7 @@ export function NewProductForm() {
         <Button
           type="submit"
           formAction={formAction}
-          disabled={isPending}
+          disabled={isPending || !meta}
           className="w-full"
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}

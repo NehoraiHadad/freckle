@@ -15,7 +15,7 @@ export interface AdminApiSuccess<T> {
   meta?: PaginationMeta;
 }
 
-export interface AdminApiError {
+export interface AdminApiErrorResponse {
   success: false;
   error: {
     code: string;
@@ -23,7 +23,7 @@ export interface AdminApiError {
   };
 }
 
-export type AdminApiResponse<T> = AdminApiSuccess<T> | AdminApiError;
+export type AdminApiResponse<T> = AdminApiSuccess<T> | AdminApiErrorResponse;
 
 export interface ActivityEvent {
   id: string;

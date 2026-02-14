@@ -17,6 +17,13 @@ export function getDb(): Database.Database {
     db.pragma("foreign_keys = ON");
 
     runMigrations(db);
+
+    // Clean expired stats cache on startup
+    try {
+      db.prepare("DELETE FROM stats_cache WHERE expires_at < ?").run(new Date().toISOString());
+    } catch {
+      // stats_cache table may not exist yet
+    }
   }
   return db;
 }

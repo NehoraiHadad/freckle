@@ -176,7 +176,7 @@ export class AdminApiClient {
     params?: Record<string, string | number | boolean | undefined | null>,
   ): Promise<{ data: T[]; meta: PaginationMeta }> {
     const url = this.buildUrl(path, params);
-    const response = await this.rawRequest("GET", url);
+    const response = await this.requestWithRetry("GET", url);
     const json = (await response.json()) as AdminApiResponse<T[]>;
 
     if (!json.success) {
@@ -209,13 +209,34 @@ export class AdminApiClient {
     return this.request<T>("PATCH", url, body);
   }
 
-  private async del<T>(path: string): Promise<T> {
-    const url = this.buildUrl(path);
-    return this.request<T>("DELETE", url);
+  private async requestWithRetry(method: string, url: string, body?: unknown, maxRetries = 2): Promise<Response> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.rawRequest(method, url, body);
+        // Don't retry on client errors (4xx), only on server errors (5xx) and network issues
+        if (response.ok || (response.status >= 400 && response.status < 500)) {
+          return response;
+        }
+        // Server error - retry
+        lastError = new Error(`Server error: ${response.status}`);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        // Network errors are retryable
+      }
+
+      if (attempt < maxRetries) {
+        // Exponential backoff: 500ms, 1000ms
+        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+      }
+    }
+
+    throw lastError ?? new Error("Request failed after retries");
   }
 
   private async request<T>(method: string, url: string, body?: unknown): Promise<T> {
-    const response = await this.rawRequest(method, url, body);
+    const response = await this.requestWithRetry(method, url, body);
     const json = (await response.json()) as AdminApiResponse<T>;
 
     if (!json.success) {

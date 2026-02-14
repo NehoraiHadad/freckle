@@ -41,9 +41,10 @@ async function AuditLogSection({
   );
 }
 
-export const metadata: Metadata = {
-  title: "Audit Log",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("auditLog");
+  return { title: t("title") };
+}
 
 export default async function AuditLogPage({ searchParams }: AuditLogPageProps) {
   const rawSearchParams = await searchParams;

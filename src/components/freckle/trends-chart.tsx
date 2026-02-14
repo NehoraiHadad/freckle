@@ -12,6 +12,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useTranslations } from "next-intl";
+import { toTitleCase } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,20 +29,13 @@ interface TrendsChartProps {
 const PERIODS = ["24h", "7d", "30d", "90d"] as const;
 
 const LINE_COLORS = [
-  "hsl(221, 83%, 53%)",
-  "hsl(160, 60%, 45%)",
-  "hsl(38, 92%, 50%)",
-  "hsl(340, 75%, 55%)",
-  "hsl(262, 83%, 58%)",
-  "hsl(12, 76%, 61%)",
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+  "hsl(var(--chart-1))",
 ];
-
-function camelToTitle(str: string): string {
-  return str
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
 
 export function TrendsChart({
   productSlug,
@@ -118,9 +112,9 @@ export function TrendsChart({
         ) : error ? (
           <ErrorBanner error={error} onRetry={fetchData} />
         ) : data && Array.isArray(data.points) && data.points.length > 0 ? (
-          <div role="img" aria-label={`Trends chart showing ${metricKeys.map(camelToTitle).join(", ")} over the last ${period}`}>
+          <div role="img" aria-label={`Trends chart showing ${metricKeys.map(toTitleCase).join(", ")} over the last ${period}`}>
             <p className="sr-only">
-              Line chart displaying {metricKeys.map(camelToTitle).join(", ")} trends with {data.points.length} data points over the last {period}.
+              Line chart displaying {metricKeys.map(toTitleCase).join(", ")} trends with {data.points.length} data points over the last {period}.
             </p>
             {/* Shorter chart on mobile (200px), taller on sm+ (300px) */}
             <div className="h-[200px] sm:h-[300px]">
@@ -151,7 +145,7 @@ export function TrendsChart({
                       key={key}
                       type="monotone"
                       dataKey={key}
-                      name={camelToTitle(key)}
+                      name={toTitleCase(key)}
                       stroke={LINE_COLORS[i % LINE_COLORS.length]}
                       strokeWidth={2}
                       dot={false}

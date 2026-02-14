@@ -1,12 +1,27 @@
 import { AdminApiClient } from "./admin-api-client";
 import { getProduct, getAllProducts } from "@/lib/db/products";
 
+interface CachedClient {
+  client: AdminApiClient;
+  cachedAt: number;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 50;
+
 class ProductClientManager {
-  private clients = new Map<string, AdminApiClient>();
+  private clients = new Map<string, CachedClient>();
 
   getClient(productId: string): AdminApiClient {
-    let client = this.clients.get(productId);
-    if (client) return client;
+    const cached = this.clients.get(productId);
+    if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+      return cached.client;
+    }
+
+    // Remove expired entry
+    if (cached) {
+      this.clients.delete(productId);
+    }
 
     const product = getProduct(productId);
     if (!product) {
@@ -16,14 +31,20 @@ class ProductClientManager {
       throw new Error(`Product "${productId}" is inactive`);
     }
 
-    client = new AdminApiClient({
+    const client = new AdminApiClient({
       productId: product.id,
       baseUrl: product.baseUrl,
       apiKey: product.apiKey,
       timeout: 10_000,
     });
 
-    this.clients.set(productId, client);
+    // Evict oldest if at capacity
+    if (this.clients.size >= MAX_CACHE_SIZE) {
+      const oldestKey = this.clients.keys().next().value;
+      if (oldestKey) this.clients.delete(oldestKey);
+    }
+
+    this.clients.set(productId, { client, cachedAt: Date.now() });
     return client;
   }
 

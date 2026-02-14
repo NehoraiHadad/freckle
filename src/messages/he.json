@@ -48,7 +48,8 @@
     "noProductsDescription": "הוסף את המוצר הראשון שלך כדי להתחיל לנהל אותו מ-Freckle.",
     "addProduct": "הוסף מוצר",
     "registerProduct": "רשום מוצר",
-    "inactiveProducts": "מוצרים לא פעילים"
+    "inactiveProducts": "מוצרים לא פעילים",
+    "stats": "סטטיסטיקות"
   },
   "products": {
     "title": "מוצרים",
@@ -135,7 +136,14 @@
     "failedToLoad": "טעינת נתוני מגמות נכשלה",
     "noResults": "לא נמצאו תוצאות",
     "noResultsDescription": "נסה לשנות את החיפוש או הסינון.",
-    "noTrendData": "אין נתוני מגמות לתקופה זו."
+    "noTrendData": "אין נתוני מגמות לתקופה זו.",
+    "somethingWentWrong": "משהו השתבש",
+    "unexpectedError": "אירעה שגיאה בלתי צפויה.",
+    "tryAgain": "נסה שוב",
+    "productLoadError": "אירעה שגיאה בטעינת המוצר.",
+    "resourceLoadError": "אירעה שגיאה בטעינת המשאב.",
+    "failedToLoadActivity": "טעינת הפעילות נכשלה",
+    "networkError": "שגיאת רשת"
   },
   "operationPanel": {
     "actions": "פעולות",
@@ -223,7 +231,10 @@
     "items": "פריטים",
     "links": "קישורים",
     "fields": "שדות",
-    "resources": "משאבים"
+    "resources": "משאבים",
+    "id": "מזהה",
+    "detail": "פרטים",
+    "selectPlaceholder": "בחר {name}..."
   },
   "commandPalette": {
     "placeholder": "הקלד פקודה או חפש...",
