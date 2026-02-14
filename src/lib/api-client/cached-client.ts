@@ -17,23 +17,6 @@ export class CachedAdminApiClient {
   ) {}
 
   // ──────────────────────────────────
-  // Cached reads
-  // ──────────────────────────────────
-
-  async stats(): Promise<unknown> {
-    return this.cachedGet("stats", () => this.client.stats());
-  }
-
-  async trends(period: "24h" | "7d" | "30d" | "90d"): Promise<unknown> {
-    const statType = `trends_${period}` as StatType;
-    return this.cachedGet(statType, () => this.client.trends(period));
-  }
-
-  async meta(): Promise<unknown> {
-    return this.cachedGet("meta", () => this.client.meta());
-  }
-
-  // ──────────────────────────────────
   // Generic cached fetch (for runtime-determined paths)
   // ──────────────────────────────────
 
@@ -44,10 +27,6 @@ export class CachedAdminApiClient {
   // ──────────────────────────────────
   // Pass-through (always fresh)
   // ──────────────────────────────────
-
-  health() {
-    return this.client.health();
-  }
 
   entity(capabilityName: string) {
     return this.client.entity(capabilityName);

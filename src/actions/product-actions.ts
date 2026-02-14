@@ -11,6 +11,7 @@ import {
 import { getDb } from "@/lib/db";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { appendLog } from "@/lib/db/audit-log";
+import type { HealthResponse, MetaResponse } from "@/types/admin-api";
 import { revalidatePath } from "next/cache";
 import { parseOpenApiSpec } from "@/lib/openapi/spec-parser";
 import { storeResources } from "@/lib/db/api-resources";
@@ -64,15 +65,15 @@ export async function addProductAction(
 
   // Try /health — soft fail
   try {
-    await tempClient.health();
+    await tempClient.fetchJson("/health");
   } catch {
     // Health endpoint is optional — continue
   }
 
   // Try /meta — soft fail
-  let meta: Awaited<ReturnType<typeof tempClient.meta>> | null = null;
+  let meta: MetaResponse | null = null;
   try {
-    meta = await tempClient.meta();
+    meta = await tempClient.fetchJson<MetaResponse>("/meta");
   } catch {
     // Meta endpoint is optional — continue
   }
@@ -191,7 +192,7 @@ export async function updateProductAction(
     });
 
     try {
-      await testClient.health();
+      await testClient.fetchJson("/health");
     } catch {
       // Soft-fail: warn but don't block the update
       console.warn(`[updateProduct] Health check failed for ${id} with new config`);
@@ -265,7 +266,7 @@ export async function testConnection(
   let health;
   let healthFailed = false;
   try {
-    health = await client.health();
+    health = await client.fetchJson<HealthResponse>("/health");
   } catch {
     healthFailed = true;
   }
@@ -273,7 +274,7 @@ export async function testConnection(
   let meta;
   let metaFailed = false;
   try {
-    meta = await client.meta();
+    meta = await client.fetchJson<MetaResponse>("/meta");
   } catch {
     metaFailed = true;
   }
@@ -299,7 +300,7 @@ export async function refreshProductMeta(id: string): Promise<{ error?: string; 
   const client = getClientManager().getClient(id);
 
   try {
-    const meta = await client.meta();
+    const meta = await client.fetchJson<MetaResponse>("/meta");
     updateProduct(id, {
       capabilities: meta.capabilities,
       supportedActions: meta.supportedActions,

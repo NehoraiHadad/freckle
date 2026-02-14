@@ -3,6 +3,7 @@ import { updateProductHealth } from "@/lib/db/products";
 import { insertHealthCheck } from "@/lib/db/health-checks";
 import { AdminApiNetworkError } from "@/lib/api-client/errors";
 import type { HealthStatus } from "@/types/product";
+import type { HealthResponse } from "@/types/admin-api";
 
 export interface HealthCheckResult {
   productId: string;
@@ -50,7 +51,7 @@ export async function checkProductHealth(productId: string): Promise<HealthCheck
   const start = Date.now();
 
   try {
-    const health = await client.health();
+    const health = await client.fetchJson<HealthResponse>("/health");
     const responseMs = Date.now() - start;
 
     // Flexible parsing: treat response as generic object

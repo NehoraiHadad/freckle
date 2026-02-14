@@ -2,10 +2,6 @@ import type {
   AdminApiResponse,
   PaginationMeta,
   PaginationParams,
-  HealthResponse,
-  MetaResponse,
-  StatsResponse,
-  TrendsResponse,
   ActionResponse,
 } from "@/types/admin-api";
 import { AdminApiError, AdminApiNetworkError } from "./errors";
@@ -31,36 +27,12 @@ export class AdminApiClient {
   }
 
   // ──────────────────────────────────
-  // Health & Meta
-  // ──────────────────────────────────
-
-  async health(): Promise<HealthResponse> {
-    return this.get<HealthResponse>("/health");
-  }
-
-  async meta(): Promise<MetaResponse> {
-    return this.get<MetaResponse>("/meta");
-  }
-
-  // ──────────────────────────────────
-  // Stats
-  // ──────────────────────────────────
-
-  async stats(): Promise<StatsResponse> {
-    return this.get<StatsResponse>("/stats");
-  }
-
-  async trends(period: "24h" | "7d" | "30d" | "90d" = "7d"): Promise<TrendsResponse> {
-    return this.get<TrendsResponse>(`/stats/trends?period=${period}`);
-  }
-
-  // ──────────────────────────────────
   // Generic Entity Accessor
   // ──────────────────────────────────
 
   /**
    * Generic entity accessor for any capability.
-   * Use for capabilities without dedicated typed methods.
+   * Use for any capability path.
    */
   entity(capabilityName: string) {
     // Convert dotted resource keys to slash paths (e.g., "stats.trends" → "stats/trends")
