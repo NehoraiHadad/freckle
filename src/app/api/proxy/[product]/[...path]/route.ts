@@ -60,9 +60,24 @@ async function handleProxy(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  // Reject oversized requests (10MB limit)
+  const contentLength = request.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Request body exceeds 10MB limit",
+        },
+      },
+      { status: 413 },
+    );
+  }
+
   try {
     let body: unknown = undefined;
-    if (request.method !== "GET" && request.method !== "DELETE") {
+    if (request.method !== "GET" && request.method !== "HEAD") {
       try {
         body = await request.json();
       } catch (e) {
@@ -73,11 +88,29 @@ async function handleProxy(request: NextRequest, { params }: RouteParams) {
     const response = await client.rawProxyRequest(request.method, fullPath, body);
     const responseBody = await response.text();
 
+    const safeHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Content-Type-Options": "nosniff",
+    };
+
+    // Forward safe upstream headers
+    const forwardHeaders = [
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "X-RateLimit-Reset",
+      "Retry-After",
+      "X-Request-Id",
+    ];
+    for (const header of forwardHeaders) {
+      const value = response.headers.get(header);
+      if (value) {
+        safeHeaders[header] = value;
+      }
+    }
+
     return new NextResponse(responseBody, {
       status: response.status,
-      headers: {
-        "Content-Type": response.headers.get("Content-Type") || "application/json",
-      },
+      headers: safeHeaders,
     });
   } catch (error) {
     console.error("[API Proxy] Request failed:", error instanceof Error ? error.message : error);

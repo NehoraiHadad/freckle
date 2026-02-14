@@ -55,7 +55,7 @@ export function renderValue(
   // Image URL detection — using <img> intentionally for dynamic external URLs
   if (typeof value === "string" && /^https?:\/\//.test(value) && /image|avatar|photo|thumbnail|picture/i.test(key)) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={value} alt="" className="size-8 rounded-full object-cover" />
+    return <img src={value} alt="" className="size-8 rounded-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
   }
 
   // Array handling
