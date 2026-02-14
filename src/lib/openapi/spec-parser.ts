@@ -9,10 +9,10 @@ import type {
 import { resolveSchema } from "./schema-resolver";
 import { toTitleCase } from "@/lib/format";
 
-interface RawOpenApiSpec {
+export interface RawOpenApiSpec {
   openapi: string;
   info: { title: string; version: string };
-  paths: Record<string, Record<string, RawOperation>>;
+  paths: Record<string, Record<string, RawOperation | unknown>>;
   components?: {
     schemas?: Record<string, JsonSchema>;
   };
@@ -26,7 +26,7 @@ interface RawOperation {
   requestBody?: {
     content?: Record<string, { schema?: JsonSchema }>;
   };
-  responses?: Record<string, { content?: Record<string, { schema?: JsonSchema }> }>;
+  responses?: Record<string, { description?: string; content?: Record<string, { schema?: JsonSchema }> }>;
 }
 
 const HTTP_METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];

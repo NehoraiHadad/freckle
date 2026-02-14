@@ -108,6 +108,11 @@ async function handleProxy(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Allow short client-side caching for GET responses
+    if (request.method === "GET") {
+      safeHeaders["Cache-Control"] = "private, max-age=30";
+    }
+
     return new NextResponse(responseBody, {
       status: response.status,
       headers: safeHeaders,

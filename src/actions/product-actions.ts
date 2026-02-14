@@ -136,6 +136,7 @@ export async function addProductAction(
     });
 
     revalidatePath("/");
+    revalidatePath("/products");
     return { success: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Failed to add product" };
@@ -207,6 +208,8 @@ export async function updateProductAction(
   });
 
   revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath(`/p/${id}`);
   return { success: true };
 }
 
@@ -231,6 +234,7 @@ export async function deleteProductAction(id: string): Promise<{ error?: string;
   });
 
   revalidatePath("/");
+  revalidatePath("/products");
   return { success: true };
 }
 
