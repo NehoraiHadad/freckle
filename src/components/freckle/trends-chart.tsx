@@ -23,6 +23,7 @@ interface TrendsChartProps {
   productSlug: string;
   initialPeriod?: "24h" | "7d" | "30d" | "90d";
   initialData?: TrendsResponse;
+  endpointPath?: string;
   className?: string;
 }
 
@@ -41,6 +42,7 @@ export function TrendsChart({
   productSlug,
   initialPeriod = "7d",
   initialData,
+  endpointPath = "/stats/trends",
   className,
 }: TrendsChartProps) {
   const t = useTranslations("trends");
@@ -57,7 +59,7 @@ export function TrendsChart({
     setError(null);
     try {
       const res = await fetch(
-        `/api/proxy/${productSlug}/stats/trends?period=${period}`
+        `/api/proxy/${productSlug}${endpointPath}?period=${period}`
       );
       const json = await res.json();
       if (!json.success) {
@@ -70,7 +72,7 @@ export function TrendsChart({
     } finally {
       setLoading(false);
     }
-  }, [productSlug, period, te]);
+  }, [productSlug, endpointPath, period, te]);
 
   // Fetch on period change, but skip the initial mount if we have server-provided data
   const initialFetchSkipped = useRef(!!initialData);

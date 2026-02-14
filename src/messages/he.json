@@ -90,7 +90,12 @@
     "updateProduct": "עדכן מוצר",
     "statusActive": "פעיל",
     "statusInactive": "לא פעיל",
-    "apiKeyUnchanged": "השאר ריק לשמירת המפתח הנוכחי"
+    "apiKeyUnchanged": "השאר ריק לשמירת המפתח הנוכחי",
+    "productId": "מזהה מוצר",
+    "productIdDescription": "מזהה ייחודי למוצר זה (אותיות, מספרים, מקפים, קווים תחתונים).",
+    "connectionPartial": "חיבור הצליח",
+    "metaNotAvailable": "נקודת הקצה /meta אינה זמינה. אנא הזן מזהה מוצר ושם תצוגה באופן ידני.",
+    "healthWarning": "נקודת קצה התקינות אינה זמינה. ייתכן שהמוצר עדיין פועל כראוי."
   },
   "settings": {
     "title": "העדפות",

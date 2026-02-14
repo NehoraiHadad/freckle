@@ -34,6 +34,14 @@ export class CachedAdminApiClient {
   }
 
   // ──────────────────────────────────
+  // Generic cached fetch (for runtime-determined paths)
+  // ──────────────────────────────────
+
+  async fetchCached(cacheKey: StatType, path: string): Promise<unknown> {
+    return this.cachedGet(cacheKey, () => this.client.fetchJson(path));
+  }
+
+  // ──────────────────────────────────
   // Pass-through (always fresh)
   // ──────────────────────────────────
 

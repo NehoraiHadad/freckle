@@ -90,7 +90,12 @@
     "updateProduct": "Update Product",
     "statusActive": "Active",
     "statusInactive": "Inactive",
-    "apiKeyUnchanged": "Leave empty to keep current key"
+    "apiKeyUnchanged": "Leave empty to keep current key",
+    "productId": "Product ID",
+    "productIdDescription": "A unique identifier for this product (letters, numbers, dashes, underscores).",
+    "connectionPartial": "Connection Established",
+    "metaNotAvailable": "The /meta endpoint is not available. Please provide a product ID and display name manually.",
+    "healthWarning": "Health endpoint is unavailable. The product may still work correctly."
   },
   "settings": {
     "title": "Settings",

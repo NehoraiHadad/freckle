@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { ErrorBanner } from "@/components/freckle/error-banner";
 import { addProductAction, testConnection } from "@/actions/product-actions";
 
@@ -20,6 +20,8 @@ export function NewProductForm() {
     error?: string;
     health?: unknown;
     meta?: unknown;
+    healthFailed?: boolean;
+    metaFailed?: boolean;
   } | null>(null);
 
   const tToast = useTranslations("toast");
@@ -29,8 +31,8 @@ export function NewProductForm() {
       const result = await addProductAction(_prev, formData);
       if (result.success) {
         toast.success(tToast("productRegistered"));
-        const meta = testResult?.meta as Record<string, unknown> | undefined;
-        const slug = meta?.product as string;
+        const metaObj = testResult?.meta as Record<string, unknown> | undefined;
+        const slug = (metaObj?.product as string) || (formData.get("productId") as string);
         if (slug) {
           router.push(`/p/${slug}`);
         } else {
@@ -160,6 +162,12 @@ export function NewProductForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {testResult?.healthFailed && (
+                <div className="flex items-center gap-2 rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+                  <AlertTriangle className="size-3.5 shrink-0" />
+                  {t("healthWarning")}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <span className="text-muted-foreground">{t("product")}</span>
                 <span className="font-medium">{meta.displayName as string}</span>
@@ -183,6 +191,43 @@ export function NewProductForm() {
           </Card>
         )}
 
+        {testResult && !testResult.error && testResult.metaFailed && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CheckCircle2 className="size-4 text-green-500" />
+                {t("connectionPartial")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {testResult.healthFailed && (
+                <div className="flex items-center gap-2 rounded-md bg-yellow-500/10 p-2 text-xs text-yellow-700 dark:text-yellow-400">
+                  <AlertTriangle className="size-3.5 shrink-0" />
+                  {t("healthWarning")}
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                {t("metaNotAvailable")}
+              </p>
+              <div className="space-y-2">
+                <label htmlFor="productId" className="text-sm font-medium">
+                  {t("productId")} <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  id="productId"
+                  name="productId"
+                  placeholder="my-product"
+                  required
+                  pattern="^[a-zA-Z0-9_-]+$"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("productIdDescription")}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {state?.error && (
           <ErrorBanner
             error={{ code: "FORM_ERROR", message: state.error }}
@@ -192,7 +237,7 @@ export function NewProductForm() {
         <Button
           type="submit"
           formAction={formAction}
-          disabled={isPending || !meta}
+          disabled={isPending || !testResult || !!testResult.error}
           className="w-full"
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}

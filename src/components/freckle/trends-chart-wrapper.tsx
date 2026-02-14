@@ -4,15 +4,18 @@ import { CachedAdminApiClient } from "@/lib/api-client/cached-client";
 import { classifyError } from "@/lib/api-client/errors";
 import { ErrorBanner } from "@/components/freckle/error-banner";
 import type { TrendsResponse } from "@/types/admin-api";
+import type { StatType } from "@/types/product";
 
 interface TrendsChartWrapperProps {
   productSlug: string;
+  trendsPath?: string;
   initialPeriod?: "24h" | "7d" | "30d" | "90d";
   className?: string;
 }
 
 export async function TrendsChartWrapper({
   productSlug,
+  trendsPath = "/stats/trends",
   initialPeriod = "7d",
   className,
 }: TrendsChartWrapperProps) {
@@ -22,7 +25,8 @@ export async function TrendsChartWrapper({
   try {
     const rawClient = getClientManager().getClient(productSlug);
     const client = new CachedAdminApiClient(rawClient, productSlug);
-    initialData = (await client.trends(initialPeriod)) as TrendsResponse;
+    const cacheKey = `trends_${initialPeriod}` as StatType;
+    initialData = (await client.fetchCached(cacheKey, `${trendsPath}?period=${initialPeriod}`)) as TrendsResponse;
   } catch (error) {
     const classified = classifyError(error);
     errorInfo = { code: classified.category, message: classified.userMessage };
@@ -37,6 +41,7 @@ export async function TrendsChartWrapper({
       productSlug={productSlug}
       initialPeriod={initialPeriod}
       initialData={initialData ?? undefined}
+      endpointPath={trendsPath}
       className={className}
     />
   );

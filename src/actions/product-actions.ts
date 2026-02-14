@@ -26,6 +26,7 @@ function validateProductId(id: string): { error?: string } | null {
 
 const productFormSchema = z.object({
   name: z.string().optional(),
+  productId: z.string().regex(/^[a-zA-Z0-9_-]+$/, "Only letters, numbers, dashes, and underscores").optional(),
   baseUrl: z.string().url("Must be a valid URL"),
   apiKey: z.string().min(1, "API key is required"),
   description: z.string().optional(),
@@ -39,6 +40,7 @@ export async function addProductAction(
 ): Promise<{ error?: string; success?: boolean }> {
   const parsed = productFormSchema.safeParse({
     name: formData.get("name") || undefined,
+    productId: formData.get("productId") || undefined,
     baseUrl: formData.get("baseUrl"),
     apiKey: formData.get("apiKey"),
     description: formData.get("description") || undefined,
@@ -50,7 +52,7 @@ export async function addProductAction(
     return { error: parsed.error.issues[0].message };
   }
 
-  const { name, baseUrl, apiKey, description, iconUrl, displayOrder } = parsed.data;
+  const { name, productId: manualProductId, baseUrl, apiKey, description, iconUrl, displayOrder } = parsed.data;
 
   // Test connectivity
   const tempClient = new AdminApiClient({
@@ -60,65 +62,75 @@ export async function addProductAction(
     timeout: 15_000,
   });
 
+  // Try /health — soft fail
   try {
     await tempClient.health();
   } catch {
-    return { error: "Could not reach the product. Check the URL and API key." };
+    // Health endpoint is optional — continue
   }
 
-  let meta;
+  // Try /meta — soft fail
+  let meta: Awaited<ReturnType<typeof tempClient.meta>> | null = null;
   try {
     meta = await tempClient.meta();
   } catch {
-    return { error: "Product is reachable but /meta endpoint failed." };
+    // Meta endpoint is optional — continue
+  }
+
+  // Determine product ID from meta or manual input
+  const resolvedProductId = meta?.product ?? manualProductId;
+  if (!resolvedProductId) {
+    return { error: "Product ID is required when /meta endpoint is unavailable." };
   }
 
   // Check for duplicate
-  const existing = getProduct(meta.product);
+  const existing = getProduct(resolvedProductId);
   if (existing) {
-    return { error: `Product "${meta.product}" is already registered.` };
+    return { error: `Product "${resolvedProductId}" is already registered.` };
   }
 
   try {
     const db = getDb();
     db.transaction(() => {
       addProduct({
-        id: meta.product,
-        name: name || meta.displayName,
-        description: description || meta.description,
+        id: resolvedProductId,
+        name: name || (meta?.displayName as string | undefined) || resolvedProductId,
+        description: description || (meta?.description as string | undefined),
         baseUrl,
         apiKey,
         iconUrl: iconUrl || undefined,
         displayOrder,
       });
 
-      // Update with discovered metadata
-      updateProduct(meta.product, {
-        capabilities: meta.capabilities,
-        supportedActions: meta.supportedActions,
-        apiStandardVersion: meta.apiStandardVersion,
-        productVersion: meta.version,
-      });
+      // Update with discovered metadata if available
+      if (meta) {
+        updateProduct(resolvedProductId, {
+          capabilities: meta.capabilities,
+          supportedActions: meta.supportedActions,
+          apiStandardVersion: meta.apiStandardVersion,
+          productVersion: meta.version,
+        });
+      }
     })();
 
     // Attempt OpenAPI spec discovery
     try {
       const rawSpec = await tempClient.fetchOpenApiSpec();
       if (rawSpec) {
-        const parsed = parseOpenApiSpec(
+        const specParsed = parseOpenApiSpec(
           rawSpec as Parameters<typeof parseOpenApiSpec>[0],
           baseUrl,
-          meta.product,
+          resolvedProductId,
         );
 
         // Store spec and parsed data
-        updateProduct(meta.product, {
+        updateProduct(resolvedProductId, {
           openapiSpec: JSON.stringify(rawSpec),
           specFetchedAt: new Date().toISOString(),
           discoveryMode: "openapi",
         });
 
-        storeResources(meta.product, parsed.resources, parsed.allOperations);
+        storeResources(resolvedProductId, specParsed.resources, specParsed.allOperations);
       }
     } catch (error) {
       // OpenAPI is optional — log but don't fail registration
@@ -128,11 +140,11 @@ export async function addProductAction(
     getClientManager().invalidateAll();
 
     appendLog({
-      productId: meta.product,
+      productId: resolvedProductId,
       action: "product.add",
       entityType: "product",
-      entityId: meta.product,
-      details: { name: meta.displayName, baseUrl },
+      entityId: resolvedProductId,
+      details: { name: name || meta?.displayName || resolvedProductId, baseUrl },
     });
 
     revalidatePath("/");
@@ -181,7 +193,8 @@ export async function updateProductAction(
     try {
       await testClient.health();
     } catch {
-      return { error: "Could not reach the product with the new configuration." };
+      // Soft-fail: warn but don't block the update
+      console.warn(`[updateProduct] Health check failed for ${id} with new config`);
     }
   }
 
@@ -241,7 +254,7 @@ export async function deleteProductAction(id: string): Promise<{ error?: string;
 export async function testConnection(
   baseUrl: string,
   apiKey: string,
-): Promise<{ error?: string; health?: unknown; meta?: unknown }> {
+): Promise<{ error?: string; health?: unknown; meta?: unknown; healthFailed?: boolean; metaFailed?: boolean }> {
   const client = new AdminApiClient({
     productId: "test",
     baseUrl,
@@ -250,23 +263,31 @@ export async function testConnection(
   });
 
   let health;
+  let healthFailed = false;
   try {
     health = await client.health();
   } catch {
-    return { error: "Could not reach the product. Check the URL and API key." };
+    healthFailed = true;
   }
 
   let meta;
+  let metaFailed = false;
   try {
     meta = await client.meta();
   } catch {
-    return { error: "Product is reachable but /meta endpoint failed.", health };
+    metaFailed = true;
   }
 
-  return { health, meta };
+  // If both fail, the product is truly unreachable
+  if (healthFailed && metaFailed) {
+    return { error: "Could not reach the product. Check the URL and API key." };
+  }
+
+  // Also try fetching OpenAPI spec as a connectivity signal if both endpoints failed
+  return { health, meta, healthFailed, metaFailed };
 }
 
-export async function refreshProductMeta(id: string): Promise<{ error?: string; success?: boolean }> {
+export async function refreshProductMeta(id: string): Promise<{ error?: string; warning?: string; success?: boolean }> {
   const idError = validateProductId(id);
   if (idError) return idError;
 
@@ -290,7 +311,7 @@ export async function refreshProductMeta(id: string): Promise<{ error?: string; 
     revalidatePath("/");
     return { success: true };
   } catch {
-    return { error: "Failed to fetch product metadata." };
+    return { success: true, warning: "Product /meta endpoint is not available. Metadata was not updated." };
   }
 }
 

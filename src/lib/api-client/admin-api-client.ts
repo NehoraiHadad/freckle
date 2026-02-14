@@ -89,6 +89,14 @@ export class AdminApiClient {
   }
 
   // ──────────────────────────────────
+  // Generic fetch (for runtime-determined paths)
+  // ──────────────────────────────────
+
+  async fetchJson<T = unknown>(path: string, params?: Record<string, string | number | boolean | undefined | null>): Promise<T> {
+    return this.get<T>(path, params);
+  }
+
+  // ──────────────────────────────────
   // Raw request (for proxy route)
   // ──────────────────────────────────
 

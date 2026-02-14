@@ -16,6 +16,7 @@ import { getProductResources } from "@/lib/db/api-resources";
 import { getClientManager } from "@/lib/api-client/product-client-manager";
 import { CachedAdminApiClient } from "@/lib/api-client/cached-client";
 import { classifyError } from "@/lib/api-client/errors";
+import { discoverDashboardEndpoints } from "@/lib/openapi/dashboard-endpoints";
 import { getResourceIcon } from "@/lib/resource-icons";
 import type { StatsResponse } from "@/types/admin-api";
 import type { ApiResource } from "@/types/openapi";
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: product?.name ?? "Product" };
 }
 
-async function StatsSection({ productId }: { productId: string }) {
+async function StatsSection({ productId, statsPath }: { productId: string; statsPath: string }) {
   const rawClient = getClientManager().getClient(productId);
   const client = new CachedAdminApiClient(rawClient, productId);
 
@@ -38,7 +39,7 @@ async function StatsSection({ productId }: { productId: string }) {
   let errorInfo: { code: string; message: string } | null = null;
 
   try {
-    stats = (await client.stats()) as StatsResponse;
+    stats = (await client.fetchCached("stats", statsPath)) as StatsResponse;
   } catch (error) {
     const classified = classifyError(error);
     errorInfo = { code: classified.category, message: classified.userMessage };
@@ -123,11 +124,8 @@ export default async function ProductDashboardPage({ params }: Props) {
   const tNav = await getTranslations("nav");
   const tGeneric = await getTranslations("generic");
 
-  // Check if product has an activity resource in OpenAPI tree
   const resourceTree = getProductResources(slug);
-  const hasActivity = resourceTree.some(
-    (r) => /analytic|activity/i.test(r.pathSegment)
-  );
+  const endpoints = discoverDashboardEndpoints(resourceTree);
 
   return (
     <ProductShell
@@ -151,17 +149,22 @@ export default async function ProductDashboardPage({ params }: Props) {
           </div>
         </div>
 
-        <Suspense fallback={<StatsSkeleton />}>
-          <StatsSection productId={product.id} />
-        </Suspense>
+        {endpoints.statsPath && (
+          <Suspense fallback={<StatsSkeleton />}>
+            <StatsSection productId={product.id} statsPath={endpoints.statsPath} />
+          </Suspense>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-          <Suspense fallback={<Skeleton className="h-[300px] w-full rounded-lg" />}>
-            <TrendsChartWrapper productSlug={product.id} />
-          </Suspense>
-          {hasActivity && (
+          {endpoints.trendsPath && (
+            <Suspense fallback={<Skeleton className="h-[300px] w-full rounded-lg" />}>
+              <TrendsChartWrapper productSlug={product.id} trendsPath={endpoints.trendsPath} />
+            </Suspense>
+          )}
+          {endpoints.activityPath && (
             <ActivityFeed
               productSlug={product.id}
+              endpointPath={endpoints.activityPath}
               compact
               limit={8}
               showLoadMore={false}

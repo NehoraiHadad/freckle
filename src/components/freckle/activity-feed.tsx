@@ -25,6 +25,7 @@ import type { ActivityEvent } from "@/types/admin-api";
 
 interface ActivityFeedProps {
   productSlug: string;
+  endpointPath?: string;
   limit?: number;
   autoRefresh?: boolean;
   refreshInterval?: number;
@@ -76,6 +77,7 @@ function timeAgo(timestamp: string, tTime: (key: string, params?: Record<string,
 
 export function ActivityFeed({
   productSlug,
+  endpointPath = "/analytics/activity",
   limit = 10,
   autoRefresh = true,
   refreshInterval = 30000,
@@ -103,7 +105,7 @@ export function ActivityFeed({
 
       try {
         const res = await fetch(
-          `/api/proxy/${productSlug}/analytics/activity?pageSize=${limit}&page=${pageNum}`
+          `/api/proxy/${productSlug}${endpointPath}?pageSize=${limit}&page=${pageNum}`
         );
         const json = await res.json();
         if (json.success) {
@@ -132,7 +134,7 @@ export function ActivityFeed({
         setLoadingMore(false);
       }
     },
-    [productSlug, limit, tErrors]
+    [productSlug, endpointPath, limit, tErrors]
   );
 
   useEffect(() => {
