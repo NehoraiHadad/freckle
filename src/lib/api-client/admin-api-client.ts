@@ -209,11 +209,6 @@ export class AdminApiClient {
     return this.request<T>("PATCH", url, body);
   }
 
-  private async del<T>(path: string): Promise<T> {
-    const url = this.buildUrl(path);
-    return this.request<T>("DELETE", url);
-  }
-
   private async request<T>(method: string, url: string, body?: unknown): Promise<T> {
     const response = await this.rawRequest(method, url, body);
     const json = (await response.json()) as AdminApiResponse<T>;

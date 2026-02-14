@@ -1,4 +1,5 @@
 import { getDb } from "./index";
+import { safeJsonParse } from "./utils";
 import type { AuditLogEntry, AuditLogInput } from "@/types/product";
 
 export function appendLog(input: AuditLogInput): void {
@@ -93,20 +94,12 @@ function deserializeAuditLog(row: Record<string, unknown>): AuditLogEntry {
     id: row.id as number,
     productId: row.product_id as string,
     action: row.action as string,
-    entityType: row.entity_type as string | null,
-    entityId: row.entity_id as string | null,
-    details: row.details ? safeJsonParse(row.details as string) : null,
-    result: row.result as AuditLogEntry["result"],
-    errorMessage: row.error_message as string | null,
-    ipAddress: row.ip_address as string | null,
+    entityType: (row.entity_type as string) ?? null,
+    entityId: (row.entity_id as string) ?? null,
+    details: safeJsonParse<Record<string, unknown> | null>(row.details, null),
+    result: (row.result as AuditLogEntry["result"]) ?? "success",
+    errorMessage: (row.error_message as string) ?? null,
+    ipAddress: (row.ip_address as string) ?? null,
     createdAt: row.created_at as string,
   };
-}
-
-function safeJsonParse(value: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
 }

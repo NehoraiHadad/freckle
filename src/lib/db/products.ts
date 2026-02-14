@@ -1,16 +1,8 @@
 import { getDb } from "./index";
 import { encrypt, decrypt } from "../crypto";
+import { safeJsonParse } from "./utils";
 import type { Product, ProductInput, ProductForDisplay } from "@/types/product";
 import type { DiscoveryMode } from "@/types/openapi";
-
-function safeJsonParse<T>(value: unknown, fallback: T): T {
-  if (typeof value !== "string") return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 export function getAllProducts(): Product[] {
   const db = getDb();
@@ -126,47 +118,30 @@ function deserializeProduct(row: unknown): Product {
   return {
     id: r.id as string,
     name: r.name as string,
-    description: r.description as string | null,
+    description: (r.description as string) ?? null,
     baseUrl: r.base_url as string,
     apiKey: decrypt(r.api_key as string),
-    iconUrl: r.icon_url as string | null,
-    status: r.status as Product["status"],
-    healthStatus: r.health_status as Product["healthStatus"],
-    lastHealthCheck: r.last_health_check as string | null,
+    iconUrl: (r.icon_url as string) ?? null,
+    status: (r.status as Product["status"]) ?? "active",
+    healthStatus: (r.health_status as Product["healthStatus"]) ?? "unknown",
+    lastHealthCheck: (r.last_health_check as string) ?? null,
     capabilities: safeJsonParse<string[]>(r.capabilities, []),
     supportedActions: safeJsonParse<Record<string, string[]>>(r.supported_actions, {}),
-    apiStandardVersion: r.api_standard_version as string | null,
-    productVersion: r.product_version as string | null,
-    displayOrder: r.display_order as number,
+    apiStandardVersion: (r.api_standard_version as string) ?? null,
+    productVersion: (r.product_version as string) ?? null,
+    displayOrder: (r.display_order as number) ?? 0,
     addedAt: r.added_at as string,
     updatedAt: r.updated_at as string,
-    openapiSpec: r.openapi_spec as string | null,
-    openapiUrl: r.openapi_url as string | null,
-    specFetchedAt: r.spec_fetched_at as string | null,
+    openapiSpec: (r.openapi_spec as string) ?? null,
+    openapiUrl: (r.openapi_url as string) ?? null,
+    specFetchedAt: (r.spec_fetched_at as string) ?? null,
     discoveryMode: (r.discovery_mode as DiscoveryMode) || "openapi",
   };
 }
 
 function deserializeProductForDisplay(row: unknown): ProductForDisplay {
-  const r = row as Record<string, unknown>;
-  return {
-    id: r.id as string,
-    name: r.name as string,
-    description: r.description as string | null,
-    baseUrl: r.base_url as string,
-    iconUrl: r.icon_url as string | null,
-    status: r.status as Product["status"],
-    healthStatus: r.health_status as Product["healthStatus"],
-    lastHealthCheck: r.last_health_check as string | null,
-    capabilities: safeJsonParse<string[]>(r.capabilities, []),
-    supportedActions: safeJsonParse<Record<string, string[]>>(r.supported_actions, {}),
-    apiStandardVersion: r.api_standard_version as string | null,
-    productVersion: r.product_version as string | null,
-    displayOrder: r.display_order as number,
-    addedAt: r.added_at as string,
-    updatedAt: r.updated_at as string,
-    openapiUrl: r.openapi_url as string | null,
-    specFetchedAt: r.spec_fetched_at as string | null,
-    discoveryMode: (r.discovery_mode as DiscoveryMode) || "openapi",
-  };
+  const product = deserializeProduct(row);
+  const { apiKey, openapiSpec, ...display } = product;
+  void apiKey; void openapiSpec;
+  return display;
 }

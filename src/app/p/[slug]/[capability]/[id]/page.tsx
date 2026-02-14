@@ -11,7 +11,7 @@ import { ErrorBanner } from "@/components/freckle/error-banner"
 import { ProductShell } from "@/components/layout/product-shell"
 import { Card, CardContent } from "@/components/ui/card"
 import { getResourceOperations, getProductResources } from "@/lib/db/api-resources"
-import type { ApiResource } from "@/types/openapi"
+import { collectResourceKeys } from "@/lib/object-utils"
 import { SubResourceTab } from "@/components/freckle/sub-resource-tab"
 import { toTitleCase, formatDate } from "@/lib/format"
 import { HIDDEN_FIELDS } from "@/lib/entity-fields"
@@ -145,14 +145,7 @@ export default async function GenericEntityDetailPage({ params }: EntityDetailPa
 
   // Verify this capability/resource exists in the OpenAPI resource tree
   const allResources = getProductResources(slug)
-  const allKeys = new Set<string>()
-  function collectKeys(rs: ApiResource[]) {
-    for (const r of rs) {
-      allKeys.add(r.key)
-      collectKeys(r.children)
-    }
-  }
-  collectKeys(allResources)
+  const allKeys = collectResourceKeys(allResources)
   if (!allKeys.has(capability)) {
     notFound()
   }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { JsonSchema } from "@/types/openapi";
+import { toTitleCase } from "@/lib/format";
 
 export interface SchemaFormHandle {
   /** Validate all fields. Returns true if valid, false if errors exist. */
@@ -129,7 +130,7 @@ interface SchemaFieldProps {
 
 function SchemaField({ name, schema, value, required, disabled, error, onBlur, onChange }: SchemaFieldProps) {
   const tGeneric = useTranslations("generic");
-  const label = schema.description || toLabel(name);
+  const label = schema.description || toTitleCase(name);
   const fieldId = `schema-field-${name}`;
   const hasError = !!error;
 
@@ -143,7 +144,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
     return (
       <fieldset className="space-y-3 rounded-lg border border-border p-4">
         <legend className="px-2 text-sm font-medium">
-          {toLabel(name)}
+          {toTitleCase(name)}
           {required && <span className="text-destructive ms-1">*</span>}
         </legend>
         {schema.description && (
@@ -183,7 +184,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
     return (
       <fieldset className="space-y-3 rounded-lg border border-border p-4">
         <legend className="px-2 text-sm font-medium">
-          {toLabel(name)}
+          {toTitleCase(name)}
           {required && <span className="text-destructive ms-1">*</span>}
         </legend>
         {schema.description && (
@@ -256,7 +257,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
     return (
       <fieldset className="space-y-3 rounded-lg border border-border p-4">
         <legend className="px-2 text-sm font-medium">
-          {toLabel(name)}
+          {toTitleCase(name)}
           {required && <span className="text-destructive ms-1">*</span>}
         </legend>
         {schema.description && (
@@ -301,7 +302,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
           onClick={() => onChange([...arrValue, itemSchema.type === "object" ? {} : ""])}
           disabled={disabled}
         >
-          + {tGeneric("addItem", { name: toLabel(name).replace(/s$/, "") })}
+          + {tGeneric("addItem", { name: toTitleCase(name).replace(/s$/, "") })}
         </Button>
       </fieldset>
     );
@@ -324,7 +325,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
           disabled={disabled}
         >
           <SelectTrigger id={fieldId} className={hasError ? "border-destructive" : undefined}>
-            <SelectValue placeholder={`Select ${toLabel(name).toLowerCase()}...`} />
+            <SelectValue placeholder={`Select ${toTitleCase(name).toLowerCase()}...`} />
           </SelectTrigger>
           <SelectContent>
             {schema.enum.map((opt) => (
@@ -379,7 +380,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
           min={schema.minimum}
           max={schema.maximum}
           disabled={disabled}
-          placeholder={schema.description || toLabel(name)}
+          placeholder={schema.description || toTitleCase(name)}
           className={hasError ? "border-destructive" : undefined}
         />
         {hasError && <p className="text-xs text-destructive">{error}</p>}
@@ -425,7 +426,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
           minLength={schema.minLength}
           maxLength={schema.maxLength}
           disabled={disabled}
-          placeholder={schema.description || toLabel(name)}
+          placeholder={schema.description || toTitleCase(name)}
           className={hasError ? "border-destructive" : undefined}
         />
         {hasError && <p className="text-xs text-destructive">{error}</p>}
@@ -450,7 +451,7 @@ function SchemaField({ name, schema, value, required, disabled, error, onBlur, o
         maxLength={schema.maxLength}
         pattern={schema.pattern}
         disabled={disabled}
-        placeholder={schema.description || toLabel(name)}
+        placeholder={schema.description || toTitleCase(name)}
         className={hasError ? "border-destructive" : undefined}
       />
       {hasError && <p className="text-xs text-destructive">{error}</p>}
@@ -485,7 +486,7 @@ function MapEntryField({
 
     return (
       <fieldset className="space-y-2 rounded-md border border-border/50 p-3">
-        <legend className="px-1 text-xs font-medium">{toLabel(entryKey)}</legend>
+        <legend className="px-1 text-xs font-medium">{toTitleCase(entryKey)}</legend>
         {Object.entries(valueSchema.properties).map(([subKey, subSchema]) => (
           <SchemaField
             key={subKey}
@@ -509,7 +510,7 @@ function MapEntryField({
   // Simple value types -> inline key label + value input
   return (
     <div className="space-y-1">
-      <label className="text-xs font-medium text-muted-foreground">{toLabel(entryKey)}</label>
+      <label className="text-xs font-medium text-muted-foreground">{toTitleCase(entryKey)}</label>
       {valueSchema.type === "boolean" ? (
         <div className="flex items-center gap-2">
           <Switch
@@ -530,7 +531,7 @@ function MapEntryField({
           min={valueSchema.minimum}
           max={valueSchema.maximum}
           disabled={disabled}
-          placeholder={toLabel(entryKey)}
+          placeholder={toTitleCase(entryKey)}
         />
       ) : (
         <Input
@@ -538,17 +539,10 @@ function MapEntryField({
           value={entryValue != null ? String(entryValue) : ""}
           onChange={(e) => onChangeValue(e.target.value || undefined)}
           disabled={disabled}
-          placeholder={toLabel(entryKey)}
+          placeholder={toTitleCase(entryKey)}
         />
       )}
     </div>
   );
 }
 
-function toLabel(name: string): string {
-  return name
-    .replace(/([A-Z])/g, " $1")
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
-}
